@@ -1,0 +1,18 @@
+{
+"name": "LibXSVF",
+"frameworks": "Arduino",
+"keywords": "network, wifi, jtag, svf, xsvf, ota",
+"description": "Lib(X)SVF - A library for implementing SVF and XSVF JTAG players",
+"url": "http://www.clifford.at/libxsvf/",
+"authors":
+[
+{
+        "name": "Clifford Wolf"
+}
+],
+"repository":
+{
+    "type": "svn",
+    "url": "http://svn.clifford.at/libxsvf/trunk"
+}
+}
