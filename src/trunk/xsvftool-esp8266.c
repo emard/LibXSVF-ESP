@@ -31,10 +31,10 @@
 
 static void io_setup(void)
 {
-  pinMode(5, 1); // OUTPUT 
-  pinMode(13, 1); // OUTPUT 
-  pinMode(14, 1); // OUTPUT 
-  pinMode(12, 0); // INPUT 
+  pinMode(5, 1); // OUTPUT
+  pinMode(13, 1); // OUTPUT
+  pinMode(14, 1); // OUTPUT
+  pinMode(12, 0); // INPUT
 }
 
 static void io_shutdown(void)
@@ -71,7 +71,6 @@ static int io_tdo()
 
 /** END: Low-Level I/O Implementation **/
 
-
 struct udata_s {
 	FILE *f;
 	int verbose;
@@ -87,7 +86,6 @@ static int h_setup(struct libxsvf_host *h)
 	struct udata_s *u = h->user_data;
 	if (u->verbose >= 2) {
 		printf("[SETUP]\n");
-		// fflush(stderr);
 	}
 	io_setup();
 	return 0;
@@ -98,7 +96,6 @@ static int h_shutdown(struct libxsvf_host *h)
 	struct udata_s *u = h->user_data;
 	if (u->verbose >= 2) {
 		printf("[SHUTDOWN]\n");
-		// fflush(stderr);
 	}
 	io_shutdown();
 	return 0;
@@ -109,7 +106,6 @@ static void h_udelay(struct libxsvf_host *h, long usecs, int tms, long num_tck)
 	struct udata_s *u = h->user_data;
 	if (u->verbose >= 3) {
 		printf("[DELAY:%ld, TMS:%d, NUM_TCK:%ld]\n", usecs, tms, num_tck);
-		// fflush(stderr);
 	}
 	if (num_tck > 0) {
 		struct timeval tv1, tv2;
@@ -128,7 +124,6 @@ static void h_udelay(struct libxsvf_host *h, long usecs, int tms, long num_tck)
 		usecs -= tv2.tv_usec - tv1.tv_usec;
 		if (u->verbose >= 3) {
 			printf("[DELAY_AFTER_TCK:%ld]\n", usecs > 0 ? usecs : 0);
-			// fflush(stderr);
 		}
 	}
 	if (usecs > 0) {
