@@ -5,10 +5,10 @@ LibXSVF jtag = LibXSVF(1,2,3,4);
 void setup()
 {
   Serial.begin(115200);
-  pinMode(12, INPUT);
-  pinMode(13, OUTPUT);
-  pinMode(14, OUTPUT);
-  pinMode(16, OUTPUT);
+  pinMode(12, INPUT); // NodeMCU D6
+  pinMode(13, OUTPUT); // NodeMCU D7
+  pinMode(14, OUTPUT); // NodeMCU D5
+  pinMode(5, OUTPUT); // NodeMCU D1
 }
 
 void loop()

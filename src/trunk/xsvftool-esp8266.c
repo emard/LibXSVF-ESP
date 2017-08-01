@@ -44,17 +44,17 @@ static void io_shutdown(void)
 
 static void io_tms(int val)
 {
-  digitalWrite(16, val);
+  digitalWrite(5, val); // NodeMCU D1
 }
 
 static void io_tdi(int val)
 {
-  digitalWrite(13, val);
+  digitalWrite(13, val); // NodeMCU D7
 }
 
 static void io_tck(int val)
 {
-  digitalWrite(14, val);
+  digitalWrite(14, val); // NodeMCU D5
 }
 
 static void io_sck(int val)
@@ -67,7 +67,7 @@ static void io_trst(int val)
 
 static int io_tdo()
 {
-  return digitalRead(12);
+  return digitalRead(12); // NodeMCU D6
 }
 
 /** END: Low-Level I/O Implementation **/
