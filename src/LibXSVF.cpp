@@ -35,6 +35,7 @@ int LibXSVF::program(String filename, int x)
   libxsvf_file = SPIFFS.open(filename.c_str(), "r");
   if(libxsvf_file)
   {
+    printf("Programming \"%s\"\n", filename.c_str());
     retval = xsvftool_esp8266_program(libxsvf_file_getbyte, x);
     libxsvf_file.close();
   }
