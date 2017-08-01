@@ -27,15 +27,14 @@
 #include <stdio.h>
 #include <errno.h>
 
-// drty fix to compile
-#define fprintf(...)
-#define fflush(...)
-
-
 /** BEGIN: Low-Level I/O Implementation **/
 
 static void io_setup(void)
 {
+  pinMode(5, 1); // OUTPUT 
+  pinMode(13, 1); // OUTPUT 
+  pinMode(14, 1); // OUTPUT 
+  pinMode(12, 0); // INPUT 
 }
 
 static void io_shutdown(void)
@@ -87,8 +86,8 @@ static int h_setup(struct libxsvf_host *h)
 {
 	struct udata_s *u = h->user_data;
 	if (u->verbose >= 2) {
-		fprintf(stderr, "[SETUP]\n");
-		fflush(stderr);
+		printf("[SETUP]\n");
+		// fflush(stderr);
 	}
 	io_setup();
 	return 0;
@@ -98,8 +97,8 @@ static int h_shutdown(struct libxsvf_host *h)
 {
 	struct udata_s *u = h->user_data;
 	if (u->verbose >= 2) {
-		fprintf(stderr, "[SHUTDOWN]\n");
-		fflush(stderr);
+		printf("[SHUTDOWN]\n");
+		// fflush(stderr);
 	}
 	io_shutdown();
 	return 0;
@@ -109,8 +108,8 @@ static void h_udelay(struct libxsvf_host *h, long usecs, int tms, long num_tck)
 {
 	struct udata_s *u = h->user_data;
 	if (u->verbose >= 3) {
-		fprintf(stderr, "[DELAY:%ld, TMS:%d, NUM_TCK:%ld]\n", usecs, tms, num_tck);
-		fflush(stderr);
+		printf("[DELAY:%ld, TMS:%d, NUM_TCK:%ld]\n", usecs, tms, num_tck);
+		// fflush(stderr);
 	}
 	if (num_tck > 0) {
 		struct timeval tv1, tv2;
@@ -128,8 +127,8 @@ static void h_udelay(struct libxsvf_host *h, long usecs, int tms, long num_tck)
 		}
 		usecs -= tv2.tv_usec - tv1.tv_usec;
 		if (u->verbose >= 3) {
-			fprintf(stderr, "[DELAY_AFTER_TCK:%ld]\n", usecs > 0 ? usecs : 0);
-			fflush(stderr);
+			printf("[DELAY_AFTER_TCK:%ld]\n", usecs > 0 ? usecs : 0);
+			// fflush(stderr);
 		}
 	}
 	if (usecs > 0) {
@@ -171,7 +170,7 @@ static int h_pulse_tck(struct libxsvf_host *h, int tms, int tdi, int tdo, int rm
 	}
 
 	if (u->verbose >= 4) {
-		fprintf(stderr, "[TMS:%d, TDI:%d, TDO_ARG:%d, TDO_LINE:%d, RMASK:%d, RC:%d]\n", tms, tdi, tdo, line_tdo, rmask, rc);
+		printf("[TMS:%d, TDI:%d, TDO_ARG:%d, TDO_LINE:%d, RMASK:%d, RC:%d]\n", tms, tdi, tdo, line_tdo, rmask, rc);
 	}
 
 	u->clockcount++;
@@ -182,7 +181,7 @@ static void h_pulse_sck(struct libxsvf_host *h)
 {
 	struct udata_s *u = h->user_data;
 	if (u->verbose >= 4) {
-		fprintf(stderr, "[SCK]\n");
+		printf("[SCK]\n");
 	}
 	io_sck(0);
 	io_sck(1);
@@ -192,14 +191,14 @@ static void h_set_trst(struct libxsvf_host *h, int v)
 {
 	struct udata_s *u = h->user_data;
 	if (u->verbose >= 4) {
-		fprintf(stderr, "[TRST:%d]\n", v);
+		printf("[TRST:%d]\n", v);
 	}
 	io_trst(v);
 }
 
 static int h_set_frequency(struct libxsvf_host *h, int v)
 {
-	fprintf(stderr, "WARNING: Setting JTAG clock frequency to %d ignored!\n", v);
+	printf("WARNING: Setting JTAG clock frequency to %d ignored!\n", v);
 	return 0;
 }
 
@@ -207,7 +206,7 @@ static void h_report_tapstate(struct libxsvf_host *h)
 {
 	struct udata_s *u = h->user_data;
 	if (u->verbose >= 3) {
-		fprintf(stderr, "[%s]\n", libxsvf_state2str(h->tap_state));
+		printf("[%s]\n", libxsvf_state2str(h->tap_state));
 	}
 }
 
@@ -222,13 +221,13 @@ static void h_report_status(struct libxsvf_host *h, const char *message)
 {
 	struct udata_s *u = h->user_data;
 	if (u->verbose >= 2) {
-		fprintf(stderr, "[STATUS] %s\n", message);
+		printf("[STATUS] %s\n", message);
 	}
 }
 
 static void h_report_error(struct libxsvf_host *h, const char *file, int line, const char *message)
 {
-	fprintf(stderr, "[%s:%d] %s\n", file, line, message);
+	printf("[%s:%d] %s\n", file, line, message);
 }
 
 static int realloc_maxsize[LIBXSVF_MEM_NUM];
@@ -239,7 +238,7 @@ static void *h_realloc(struct libxsvf_host *h, void *ptr, int size, enum libxsvf
 	if (size > realloc_maxsize[which])
 		realloc_maxsize[which] = size;
 	if (u->verbose >= 3) {
-		fprintf(stderr, "[REALLOC:%s:%d]\n", libxsvf_mem2str(which), size);
+		printf("[REALLOC:%s:%d]\n", libxsvf_mem2str(which), size);
 	}
 	return realloc(ptr, size);
 }

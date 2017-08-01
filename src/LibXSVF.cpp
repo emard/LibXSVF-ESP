@@ -3,8 +3,7 @@
 
 extern "C" int xsvftool_esp8266_scan(void);
 
-void LibXSVF::test()
+void LibXSVF::scan()
 {
-  Serial.print("SCAN: ");
-  Serial.println(xsvftool_esp8266_scan());
+  xsvftool_esp8266_scan();
 }

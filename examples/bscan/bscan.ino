@@ -1,19 +1,26 @@
 #include <LibXSVF.h>
 
-LibXSVF jtag = LibXSVF(1,2,3,4);
+/*
+> Currently hardcoded pinout
+> ULX2S wire     NodeMCU Arduino
+> ---   ----     --      -------
+> VCC   brown
+> GND   black    GND
+> TCK   white    D5      14
+> TDO   gray     D6      12
+> TDI   violett  D7      13
+> TMS   blue     D1      5
+*/
+
+LibXSVF jtag = LibXSVF();
 
 void setup()
 {
   Serial.begin(115200);
-  pinMode(12, INPUT); // NodeMCU D6
-  pinMode(13, OUTPUT); // NodeMCU D7
-  pinMode(14, OUTPUT); // NodeMCU D5
-  pinMode(5, OUTPUT); // NodeMCU D1
 }
 
 void loop()
 {
-  jtag.test();
-
+  jtag.scan();
   delay(1000);
 }
