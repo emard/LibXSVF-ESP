@@ -38,7 +38,7 @@ int libxsvf_scan(struct libxsvf_host *h)
 			return -1;
 
 		if (bit == 0) {
-			LIBXSVF_HOST_REPORT_DEVICE(0);
+			// LIBXSVF_HOST_REPORT_DEVICE(0);
 		} else {
 			unsigned long idcode = 1;
 			for (j=1; j<32; j++) {
