@@ -29,6 +29,7 @@ class LibXSVF
     {
     }
 
-    void scan(); // function body is in LibXSVF.cpp
+    int scan(); // function body is in LibXSVF.cpp
+    int program(String filename, int x); // program the device with some file
 };
 

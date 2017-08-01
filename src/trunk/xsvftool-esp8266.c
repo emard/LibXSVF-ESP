@@ -18,14 +18,14 @@
  *
  */
 
-#include "libxsvf.h"
-
 #include <sys/time.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
+
+#include "libxsvf.h"
 
 /** BEGIN: Low-Level I/O Implementation **/
 
@@ -73,6 +73,7 @@ static int io_tdo()
 
 struct udata_s {
 	FILE *f;
+	int (*file_getbyte)();
 	int verbose;
 	int clockcount;
 	int bitcount_tdi;
@@ -135,7 +136,7 @@ static int h_getbyte(struct libxsvf_host *h)
 {
 	struct udata_s *u = h->user_data;
 	// return fgetc(u->f);
-	return 0;
+	return u->file_getbyte();
 }
 
 static int h_pulse_tck(struct libxsvf_host *h, int tms, int tdi, int tdo, int rmask, int sync)
@@ -387,4 +388,12 @@ int main(int argc, char **argv)
 int xsvftool_esp8266_scan(void)
 {
   return libxsvf_play(&h, LIBXSVF_MODE_SCAN);
+}
+
+int xsvftool_esp8266_program(int (*file_getbyte)(), int x)
+{
+  u.file_getbyte = file_getbyte;
+  if(u.file_getbyte)
+    return libxsvf_play(&h, x ? LIBXSVF_MODE_XSVF : LIBXSVF_MODE_SVF);
+  return -1; // NULL file_getbyte pointer supplied
 }
