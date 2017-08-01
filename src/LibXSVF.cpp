@@ -20,7 +20,10 @@ int libxsvf_file_getbyte()
   {
     int bytes = libxsvf_file.read(&buf, 1);
     if(bytes == 1)
+    {
+      // printf("%c", buf); // some dumping of content
       return buf;
+    }
   }
   return EOF;
 }
