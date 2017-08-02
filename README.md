@@ -18,9 +18,9 @@ accept only 1E-02
 # Upload bitstream file to SPI flash
 
 In the sketch example, you can place file in 
-"/data/bitstream.svf" and click Tools->"ESP8266 Sketch Data Upload",
-(google a bit howto install that tool) or get some cool 
-Web server like FSBrowserNG which can already
+"/data/bitstream.svf" and click 
+Tools->[ESP8266 Sketch Data Upload](https://github.com/esp8266/arduino-esp8266fs-plugin),
+or get some cool Web server like FSBrowserNG which can already
 upload any file to "/bitstream.svf" using web browser.
 
 # JTAG PINOUT
