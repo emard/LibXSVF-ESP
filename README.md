@@ -15,5 +15,6 @@ SVF file starts uploading with some acceptable
 speed and after 600-2000 commands, it becomes
 too slow to be of any practical use. Typical 
 file has over 10000 commands. It seems that
-filesystem read (byte at a time) is becoming
-slow.
+SPIFFS filesystem read (byte at a time) is becoming
+slow. Good speed is achived only with about 8K
+buffered reads.
