@@ -1,4 +1,4 @@
-# Lib(X)SVF player for ESP8266 JTAG
+# (X)SVF programmer for ESP8266 JTAG
 
 Works as standalone SVF or XSVF JTAG programmer
 for FPGA devices. This one should be better than my wifi_jtag. 
