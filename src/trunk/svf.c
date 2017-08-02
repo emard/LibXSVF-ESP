@@ -106,8 +106,8 @@ static int strtokencmp(const char *str1, const char *str2)
 static int strtokenskip(const char *str1)
 {
 	int i = 0;
-	while (str1[i] != 0 && str1[i] != ' ') i++;
-	while (str1[i] == ' ') i++;
+	while (str1[i] != 0 && str1[i] != ' ' && str1[i] != '\t') i++;
+	while (str1[i] == ' ' || str1[i] == '\t') i++;
 	return i;
 }
 
@@ -343,12 +343,21 @@ int libxsvf_svf(struct libxsvf_host *h)
 	int state_run = LIBXSVF_TAP_IDLE;
 	int state_endrun = LIBXSVF_TAP_IDLE;
 
+        int line = 0;
+        char linestring[256];
 	while (1)
 	{
 		rc = read_command(h, &command_buffer, &command_buffer_len);
 
 		if (rc <= 0)
-			break;
+			break;	
+
+		line++;
+		if((line % 10) == 0)
+		{
+			sprintf(linestring, "line %d\n", line);
+			LIBXSVF_HOST_REPORT_ERROR(linestring);
+		}
 
 		const char *p = command_buffer;
 
@@ -442,6 +451,7 @@ int libxsvf_svf(struct libxsvf_host *h)
 			int min_time = -1;
 			int max_time = -1;
 			while (*p) {
+			        // printf("parsing p=\"%s\"\n", p);
 				int got_maximum = 0;
 				if (!strtokencmp(p, "MAXIMUM")) {
 					p += strtokenskip(p);
@@ -469,6 +479,13 @@ int libxsvf_svf(struct libxsvf_host *h)
 				while (*p >= '0' && *p <= '9') {
 					number = number*10 + (*p - '0');
 					p++;
+				}
+				if(*p == '.')
+				{
+					p++;
+					while (*p >= '0' && *p <= '9')
+						p++;
+					// FIXME: accept fractional part
 				}
 				if(*p == 'E' || *p == 'e') {
 					p++;
@@ -502,7 +519,7 @@ int libxsvf_svf(struct libxsvf_host *h)
 				} else {
 					number_e6 = number * 1000000;
 				}
-				while (*p == ' ') {
+				while (*p == ' ' || *p == '\t') {
 					p++;
 				}
 				if (!strtokencmp(p, "SEC")) {
@@ -640,7 +657,8 @@ eol_check:
 			continue;
 
 syntax_error:
-		LIBXSVF_HOST_REPORT_ERROR("SVF Syntax Error:");
+		sprintf(linestring, "Line %d: SVF Syntax Error:", line);
+		LIBXSVF_HOST_REPORT_ERROR(linestring);
 		if (0) {
 unsupported_error:
 			LIBXSVF_HOST_REPORT_ERROR("Error in SVF input: unsupported command:");
