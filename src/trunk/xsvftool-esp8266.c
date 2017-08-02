@@ -28,9 +28,6 @@
 
 #include "libxsvf.h"
 
-// for SPIFFS efficiency, read() needs buffer about 8K
-#define BUFFER_SIZE 8192
-
 /** BEGIN: Low-Level I/O Implementation **/
 
 static void io_setup(void)
