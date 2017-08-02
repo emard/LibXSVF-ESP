@@ -1,0 +1,53 @@
+
+! Check the IDCODE
+
+! Shift in IDCODE(0x16) instruction
+SIR	8	TDI  (16);
+SDR	32	TDI  (FFFFFFFF)
+		TDO  (0129A043)
+		MASK (FFFFFFFF);
+
+
+! Program Bscan register
+
+! Shift in Preload(0x1C) instruction
+SIR	8	TDI  (1C);
+STATE	DRPAUSE;
+STATE	IDLE;
+
+
+! Enable SRAM programming mode
+
+! Shift in ISC SRAM ENABLE(0x55) instruction
+SIR	8	TDI  (55);
+RUNTEST	IDLE	3 TCK	1.00E-03 SEC;
+
+
+! Erase the device
+
+! Shift in ISC ERASE(0x03) instruction
+SIR	8	TDI  (03);
+RUNTEST	IDLE	3 TCK	1.00E-02 SEC;
+
+
+! Program DONE bit
+
+! Shift in ISC PROGRAM DONE(0x2F) instruction
+SIR	8	TDI  (2F);
+RUNTEST	IDLE	3 TCK	1.00E-02 SEC;
+! Shift in READ STATUS(0xB2) instruction
+SIR	8	TDI  (B2);
+RUNTEST	IDLE	3 TCK	1.00E-03 SEC;
+SDR	8	TDI  (00)
+		TDO  (02)
+		MASK (03);
+
+
+! Exit the programming mode
+
+! Shift in ISC DISABLE(0x1E) instruction
+SIR	8	TDI  (1E);
+RUNTEST	IDLE	3 TCK	2.00E-01 SEC;
+! Shift in BYPASS(0xFF) instruction
+SIR	8	TDI  (FF);
+RUNTEST	IDLE	3 TCK	1.00E-02 SEC;
