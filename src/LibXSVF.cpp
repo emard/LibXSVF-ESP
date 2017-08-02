@@ -2,6 +2,9 @@
 #include "LibXSVF.h"
 #include "trunk/libxsvf.h"
 
+// 8K buffer for SPIFFS efficiency file.read(buf, 8192)
+#define BUFFER_SIZE 8192
+
 extern "C" int xsvftool_esp8266_scan(void);
 extern "C" int xsvftool_esp8266_program(int (*file_getbyte)(), int x);
 
@@ -10,18 +13,20 @@ int LibXSVF::scan()
   return xsvftool_esp8266_scan();
 }
 
-
+uint8_t *libxsvf_file_buffer = NULL;
 File libxsvf_file;
 
 int libxsvf_file_getbyte()
 {
-  uint8_t buf;
-  if(libxsvf_file.read(&buf, 1) == 1)
-  {
-    // printf("%c", buf); // some dumping of content
-    return buf;
-  }
-  return EOF;
+  static int libxsvf_file_buffer_content = 0;
+  if(libxsvf_file_buffer_content == 0) // refill the buffer and update content
+    libxsvf_file_buffer_content = libxsvf_file.read(libxsvf_file_buffer, BUFFER_SIZE);
+  
+  if(libxsvf_file_buffer_content <= 0)
+    return libxsvf_file_buffer_content; // should return EOF
+  libxsvf_file_buffer_content--; // one byte less in the content
+  // one byte at a time from the buffer
+  return libxsvf_file_buffer[BUFFER_SIZE-1-libxsvf_file_buffer_content];
 }
 
 
@@ -31,9 +36,11 @@ int LibXSVF::program(String filename, int x)
   libxsvf_file = SPIFFS.open(filename.c_str(), "r");
   if(libxsvf_file)
   {
+    libxsvf_file_buffer = (uint8_t *)malloc(BUFFER_SIZE * sizeof(uint8_t));
     printf("Programming \"%s\"\n", filename.c_str());
     retval = xsvftool_esp8266_program(libxsvf_file_getbyte, x);
     libxsvf_file.close();
+    free(libxsvf_file_buffer);
   }
   return retval;
 }

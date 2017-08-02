@@ -24,8 +24,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
+#include <stdint.h>
 
 #include "libxsvf.h"
+
+// for SPIFFS efficiency, read() needs buffer about 8K
+#define BUFFER_SIZE 8192
 
 /** BEGIN: Low-Level I/O Implementation **/
 
@@ -72,7 +76,6 @@ static int io_tdo()
 /** END: Low-Level I/O Implementation **/
 
 struct udata_s {
-	FILE *f;
 	int (*file_getbyte)();
 	int verbose;
 	int clockcount;
@@ -135,8 +138,7 @@ static void h_udelay(struct libxsvf_host *h, long usecs, int tms, long num_tck)
 static int h_getbyte(struct libxsvf_host *h)
 {
 	struct udata_s *u = h->user_data;
-	// return fgetc(u->f);
-	return u->file_getbyte();
+	return u->file_getbyte(); // returns same as fgetc()
 }
 
 static int h_pulse_tck(struct libxsvf_host *h, int tms, int tdi, int tdo, int rmask, int sync)

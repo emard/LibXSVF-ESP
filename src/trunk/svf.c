@@ -343,8 +343,8 @@ int libxsvf_svf(struct libxsvf_host *h)
 	int state_run = LIBXSVF_TAP_IDLE;
 	int state_endrun = LIBXSVF_TAP_IDLE;
 
-        int line = 0;
-        char linestring[256];
+        int cmd_count = 0;
+        char cmd_countstring[256];
 	while (1)
 	{
 		rc = read_command(h, &command_buffer, &command_buffer_len);
@@ -352,11 +352,12 @@ int libxsvf_svf(struct libxsvf_host *h)
 		if (rc <= 0)
 			break;	
 
-		line++;
-		if((line % 10) == 0)
+		cmd_count++;
+		if((cmd_count % 100) == 0)
 		{
-			sprintf(linestring, "line %d\n", line);
-			LIBXSVF_HOST_REPORT_ERROR(linestring);
+			// print progress every 100 commands
+			sprintf(cmd_countstring, "Command %d\n", cmd_count);
+			LIBXSVF_HOST_REPORT_ERROR(cmd_countstring);
 		}
 
 		const char *p = command_buffer;
@@ -657,8 +658,8 @@ eol_check:
 			continue;
 
 syntax_error:
-		sprintf(linestring, "Line %d: SVF Syntax Error:", line);
-		LIBXSVF_HOST_REPORT_ERROR(linestring);
+		sprintf(cmd_countstring, "Command %d: SVF Syntax Error:", cmd_count);
+		LIBXSVF_HOST_REPORT_ERROR(cmd_countstring);
 		if (0) {
 unsupported_error:
 			LIBXSVF_HOST_REPORT_ERROR("Error in SVF input: unsupported command:");
