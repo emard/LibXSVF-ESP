@@ -1,4 +1,4 @@
-# (X)SVF programmer for ESP8266 JTAG
+# ESP8266 Arduino as (X)SVF JTAG programmer
 
 Works as standalone SVF or XSVF JTAG programmer
 for FPGA devices. This one should be better than my wifi_jtag. 
