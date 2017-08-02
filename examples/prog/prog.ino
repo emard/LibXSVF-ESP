@@ -19,11 +19,11 @@ void setup()
 {
   SPIFFS.begin();
   Serial.begin(115200);
+  jtag.scan();
+  jtag.program("/bitstream.svf", 0);
 }
 
 void loop()
 {
-  jtag.scan();
-  jtag.program("/bitstream.svf", 0);
   delay(1000);
 }
