@@ -20,7 +20,7 @@ accept only 1E-02
 Close arduino
 
     cd ~/Arduino
-    git clone https://github.com/gmag11/FSBrowserNG
+    git clone https://github.com/emard/LibXSVF
 
 Start arduino, open examples->LibXSVF
 
