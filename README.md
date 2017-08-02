@@ -20,7 +20,7 @@ accept only 1E-02
 In the sketch example, you can place file in 
 "/data/bitstream.svf" and click 
 Tools->[ESP8266 Sketch Data Upload](https://github.com/esp8266/arduino-esp8266fs-plugin),
-or get some cool Web server like FSBrowserNG which can already
+or get some cool Web server like [FSBrowserNG](https://github.com/gmag11/FSBrowserNG) which can already
 upload any file to "/bitstream.svf" using web browser.
 
 # JTAG PINOUT
