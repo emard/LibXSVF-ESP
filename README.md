@@ -1,14 +1,32 @@
 # Lib(X)SVF player for ESP8266 JTAG
 
-This is kinda fork of Clifford Wolf Lib(X)SVF,
-just a small adaptation to get it working with ESP8266.
+Works as standalone SVF or XSVF JTAG programmer
+for FPGA devices. This one should be better than my wifi_jtag. 
+Reads file from onboard SPI flash chip at ESP8266
+(it can hold 3MB) to program the target JTAG device.
+I tested it on my Lattice XP2.
 
-Reads file from SPIFFS and plays (or uploads) it to
-target JTAG device. In the sketch example, you can
-place file in "/data/bitstream.svf" 
-using "ESP8266 Sketch Data Upload" or from Web
-server like FSBrowserNG to "/bitstream.svf".
-
-Arduino ESP8266 wrapper is added and a small bugfix is done
-to accept decimal floats, e.g. it accepts now numbers
+It is kinda fork of Clifford Wolf Lib(X)SVF, but just a small 
+adaptation to get it working with ESP8266.
+Arduino ESP8266 Library wrapper is added and a small bugfix is done
+to accept decimal floats in "svf.c", e.g. it accepts now numbers
 like 1.00E-02 while before only 1E-02 would be accepted.
+
+# Upload bitstream file to SPI flash
+
+In the sketch example, you can place file in 
+"/data/bitstream.svf" and click Tools->"ESP8266 Sketch Data Upload",
+(google a bit howto install that tool) or get some cool 
+Web server like FSBrowserNG which can already
+upload any file to "/bitstream.svf" using web browser.
+
+# JTAG PINOUT
+
+It's currently "hidden" in xsvftool-esp8266.c
+You can edit this file and recompile sketch 
+to change pinout.
+
+    #define TCK 14 // NodeMCU D5
+    #define TMS  5 // NodeMCU D1
+    #define TDI 13 // NodeMCU D7
+    #define TDO 12 // NodeMCU D6
