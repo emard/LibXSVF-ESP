@@ -28,33 +28,42 @@
 
 #include "libxsvf.h"
 
+#define TCK 14 // NodeMCU D5
+#define TMS  5 // NodeMCU D1
+#define TDI 13 // NodeMCU D7
+#define TDO 12 // NodeMCU D6
+
 /** BEGIN: Low-Level I/O Implementation **/
 
 static void io_setup(void)
 {
-  pinMode(5, 1); // OUTPUT
-  pinMode(13, 1); // OUTPUT
-  pinMode(14, 1); // OUTPUT
-  pinMode(12, 0); // INPUT
+  pinMode(TCK, 1); // OUTPUT
+  pinMode(TMS, 1); // OUTPUT
+  pinMode(TDI, 1); // OUTPUT
+  pinMode(TDO, 0); // INPUT
 }
 
 static void io_shutdown(void)
 {
+  pinMode(TCK, 0); // INPUT
+  pinMode(TMS, 0); // INPUT
+  pinMode(TDO, 0); // INPUT
+  pinMode(TDI, 0); // INPUT
 }
 
 static void io_tms(int val)
 {
-  digitalWrite(5, val); // NodeMCU D1
+  digitalWrite(TMS, val);
 }
 
 static void io_tdi(int val)
 {
-  digitalWrite(13, val); // NodeMCU D7
+  digitalWrite(TDI, val);
 }
 
 static void io_tck(int val)
 {
-  digitalWrite(14, val); // NodeMCU D5
+  digitalWrite(TCK, val);
 }
 
 static void io_sck(int val)
@@ -67,7 +76,7 @@ static void io_trst(int val)
 
 static int io_tdo()
 {
-  return digitalRead(12); // NodeMCU D6
+  return digitalRead(TDO);
 }
 
 /** END: Low-Level I/O Implementation **/
