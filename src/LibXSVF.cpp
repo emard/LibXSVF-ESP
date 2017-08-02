@@ -4,7 +4,7 @@
 
 // bytes buffer for SPIFFS efficiency
 // 256-8192
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 8192
 
 extern "C" int xsvftool_esp8266_scan(void);
 extern "C" int xsvftool_esp8266_program(int (*file_getbyte)(), int x);
