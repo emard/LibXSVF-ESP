@@ -19,6 +19,7 @@ struct libxsvf_file_buf
   uint8_t *buffer;
   int count; // how many bytes in buffer
   int ptr; // current reading pointer
+  uint8_t blink; // for the LED
   File file; // open file from SPIFFS
 };
 struct libxsvf_file_buf rd;
@@ -31,6 +32,7 @@ int libxsvf_file_getbyte()
     rd.count = rd.file.read(rd.buffer, BUFFER_SIZE);
     if(rd.count <= 0 || rd.count > BUFFER_SIZE)
       return EOF; // should return EOF
+    digitalWrite(LED_BUILTIN, (rd.blink++) & 1);
   }
   // one byte at a time from the buffer
   // printf("%c", libxsvf_file_buffer[BUFFER_SIZE-1-libxsvf_file_buffer_content]);
@@ -44,12 +46,14 @@ int LibXSVF::program(String filename, int x)
   rd.file = SPIFFS.open(filename.c_str(), "r");
   if(rd.file)
   {
+    pinMode(LED_BUILTIN, OUTPUT);
     rd.buffer = (uint8_t *)malloc(BUFFER_SIZE * sizeof(uint8_t));
     rd.count = 0;
     rd.ptr = 0;
     printf("Programming \"%s\"\n", filename.c_str());
     retval = xsvftool_esp8266_program(libxsvf_file_getbyte, x);
     rd.file.close();
+    pinMode(LED_BUILTIN, INPUT);
     free(rd.buffer);
   }
   return retval;
