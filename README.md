@@ -1,6 +1,6 @@
 # Lib(X)SVF player for ESP8266 JTAG
 
-Reads file from SPIFFS and plays (or uploads) it to 
+Reads file from SPIFFS and plays (or uploads) it to
 target JTAG device. In the sketch example, you can
 place file in "/data/bitstream.svf" 
 using "ESP8266 Sketch Data Upload" or from Web
@@ -12,7 +12,8 @@ like 1.00E-02 while before only 1E-02 would be accepted.
 
 Something important still doesn't work well.
 SVF file starts uploading with some acceptable 
-speed and after line 620 it becomes too slow 
-to be of any practical use. Typical file has 
-about 50000 lines.
-
+speed and after 600-2000 commands, it becomes
+too slow to be of any practical use. Typical 
+file has over 10000 commands. It seems that
+filesystem read (byte at a time) is becoming
+slow.
