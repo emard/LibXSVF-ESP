@@ -16,14 +16,10 @@ File libxsvf_file;
 int libxsvf_file_getbyte()
 {
   uint8_t buf;
-  if(libxsvf_file)
+  if(libxsvf_file.read(&buf, 1) == 1)
   {
-    int bytes = libxsvf_file.read(&buf, 1);
-    if(bytes == 1)
-    {
-      // printf("%c", buf); // some dumping of content
-      return buf;
-    }
+    // printf("%c", buf); // some dumping of content
+    return buf;
   }
   return EOF;
 }
