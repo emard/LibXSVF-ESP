@@ -6,11 +6,12 @@ Reads file from onboard SPI flash chip at ESP8266
 (it can hold 3MB) to program the target JTAG device.
 I tested it on my Lattice XP2.
 
-It is kinda fork of Clifford Wolf Lib(X)SVF, but just a small 
-adaptation to get it working with ESP8266.
+It is small fork of Clifford Wolf [Lib(X)SVF](http://www.clifford.at/libxsvf/),
+minimal adaptation to get it working with ESP8266.
 Arduino ESP8266 Library wrapper is added and a small bugfix is done
 to accept decimal floats in "svf.c", e.g. it accepts now numbers
-like 1.00E-02 while before only 1E-02 would be accepted.
+like 1.00E-02 while original library would throw syntax error or
+accept only 1E-02
 
 # Upload bitstream file to SPI flash
 
