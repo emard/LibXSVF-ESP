@@ -18,3 +18,8 @@ file has over 10000 commands. It seems that
 SPIFFS filesystem read (byte at a time) is becoming
 slow. Good speed is achived only with about 8K
 buffered reads.
+
+Buffering introduced, but now there's corruption!
+Lowered buffer to 254 byte, now it seems no corruption
+but I'm not sure if bistream works either.
+
