@@ -19,7 +19,7 @@ accept only 1E-02
 
 Close arduino
 
-    cd ~/Arduino
+    cd ~/Arduino/libraries
     git clone https://github.com/emard/LibXSVF
 
 Start arduino, open examples->LibXSVF
