@@ -106,8 +106,8 @@ static int strtokencmp(const char *str1, const char *str2)
 static int strtokenskip(const char *str1)
 {
 	int i = 0;
-	while (str1[i] != 0 && str1[i] != ' ' && str1[i] != '\t') i++;
-	while (str1[i] == ' ' || str1[i] == '\t') i++;
+	while (str1[i] != 0 && str1[i] != ' ') i++;
+	while (str1[i] == ' ') i++;
 	return i;
 }
 
@@ -519,7 +519,7 @@ int libxsvf_svf(struct libxsvf_host *h)
 				} else {
 					number_e6 = number * 1000000;
 				}
-				while (*p == ' ' || *p == '\t') {
+				while (*p == ' ') {
 					p++;
 				}
 				if (!strtokencmp(p, "SEC")) {
