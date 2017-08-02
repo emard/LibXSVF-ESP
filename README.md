@@ -15,6 +15,15 @@ to accept decimal floats, e.g. it accepts now numbers
 like 1.00E-02 while original library would throw syntax error or
 accept only 1E-02
 
+# Install
+
+Close arduino
+
+    cd ~/Arduino
+    git clone https://github.com/gmag11/FSBrowserNG
+
+Start arduino, open examples->LibXSVF
+
 # Upload bitstream file to SPI flash
 
 In the sketch example, you can place file in 
