@@ -22,5 +22,6 @@ void setup()
 void loop()
 {
   jtag.scan();
+  Serial.println(jtag.id(),HEX);
   delay(1000);
 }

@@ -89,6 +89,7 @@ struct udata_s {
 	int bitcount_tdo;
 	int retval_i;
 	int retval[256];
+	uint32_t idcode;
 };
 
 static int h_setup(struct libxsvf_host *h)
@@ -216,7 +217,8 @@ static void h_report_tapstate(struct libxsvf_host *h)
 
 static void h_report_device(struct libxsvf_host *h, unsigned long idcode)
 {
-	// struct udata_s *u = h->user_data;
+	struct udata_s *u = h->user_data;
+	u->idcode = idcode;
 	printf("idcode=0x%08lx, revision=0x%01lx, part=0x%04lx, manufactor=0x%03lx\n", idcode,
 			(idcode >> 28) & 0xf, (idcode >> 12) & 0xffff, (idcode >> 1) & 0x7ff);
 }
@@ -395,7 +397,14 @@ int main(int argc, char **argv)
 
 int xsvftool_esp8266_scan(void)
 {
+  u.idcode = 0; // clear previous scan result
   return libxsvf_play(&h, LIBXSVF_MODE_SCAN);
+}
+
+// return scan result (idcode)
+uint32_t xsvftool_esp8266_id(void)
+{
+  return u.idcode;
 }
 
 int xsvftool_esp8266_program(int (*file_getbyte)(), int x)

@@ -17,8 +17,9 @@ LibXSVF jtag = LibXSVF();
 
 void setup()
 {
-  SPIFFS.begin();
   Serial.begin(115200);
+  SPIFFS.begin();
+  jtag.begin(&SPIFFS);
   jtag.scan();
   jtag.program("/bitstream.svf", 0);
 }

@@ -1,3 +1,4 @@
+#include <FS.h>
 #include <Arduino.h>
 
 class LibXSVF
@@ -29,7 +30,9 @@ class LibXSVF
     {
     }
 
+    void begin(FS* fs); // provide a filesystem to work with
     int scan(); // function body is in LibXSVF.cpp
+    uint32_t id(); // function body is in LibXSVF.cpp
     int program(String filename, int x); // program the device with some file
 };
 
