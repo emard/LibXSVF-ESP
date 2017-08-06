@@ -51,11 +51,9 @@ int libxsvf_file_getbyte()
   return rd.buffer[rd.ptr++];
 }
 
-// important: Filesystem SPIFFS is not thread safe,
-// if we have async web interface running, then
-// during programming, the async web interface 
-// should be prevented from accessing the SPIFFS
-// at the same time.
+// warning: Filesystem SPIFFS may not be thread safe
+// accesing it from several places at the same time
+// sometimes may lead to data corruption
 int LibXSVF::program(String filename, int x)
 {
   int retval = -1;
