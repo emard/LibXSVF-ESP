@@ -28,27 +28,45 @@
 
 #include "libxsvf.h"
 
+
+// arduino C++ constants "INPUT", "OUTPUT" are not passed to C
+// so we (re)define them here. Those constants are
+// different for ESP8266 and ESP32
+
+#if ESP9266
 #define TCK 14 // NodeMCU D5
 #define TMS  5 // NodeMCU D1
 #define TDI 13 // NodeMCU D7
 #define TDO 12 // NodeMCU D6
+#define INPUT 0
+#define OUTPUT 1
+#endif
+
+#if ESP32
+#define TCK 18
+#define TMS 21
+#define TDI 23
+#define TDO 19
+#define INPUT 1
+#define OUTPUT 2
+#endif
 
 /** BEGIN: Low-Level I/O Implementation **/
 
 static void io_setup(void)
 {
-  pinMode(TCK, 1); // OUTPUT
-  pinMode(TMS, 1); // OUTPUT
-  pinMode(TDI, 1); // OUTPUT
-  pinMode(TDO, 0); // INPUT
+  pinMode(TCK, OUTPUT);
+  pinMode(TMS, OUTPUT);
+  pinMode(TDI, OUTPUT);
+  pinMode(TDO, INPUT);
 }
 
 static void io_shutdown(void)
 {
-  pinMode(TCK, 0); // INPUT
-  pinMode(TMS, 0); // INPUT
-  pinMode(TDO, 0); // INPUT
-  pinMode(TDI, 0); // INPUT
+  pinMode(TCK, INPUT);
+  pinMode(TMS, INPUT);
+  pinMode(TDO, INPUT);
+  pinMode(TDI, INPUT);
 }
 
 static void io_tms(int val)
