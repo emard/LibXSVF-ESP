@@ -116,6 +116,7 @@ const char *libxsvf_mem2str(enum libxsvf_mem which);
 
 /* Internal API */ 
 int libxsvf_svf(struct libxsvf_host *h);
+int libxsvf_svf_packet(struct libxsvf_host *h, int index, int final);
 int libxsvf_xsvf(struct libxsvf_host *h);
 int libxsvf_scan(struct libxsvf_host *h);
 int libxsvf_tap_walk(struct libxsvf_host *, enum libxsvf_tap_state);

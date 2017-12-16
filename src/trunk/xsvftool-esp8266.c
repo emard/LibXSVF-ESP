@@ -432,3 +432,12 @@ int xsvftool_esp8266_program(int (*file_getbyte)(), int x)
     return libxsvf_play(&h, x ? LIBXSVF_MODE_XSVF : LIBXSVF_MODE_SVF);
   return -1; // NULL file_getbyte pointer supplied
 }
+
+int xsvftool_esp8266_svf_packet(int (*packet_getbyte)(), int index, int final)
+{
+  u.verbose = 0;
+  u.file_getbyte = packet_getbyte;
+  if(u.file_getbyte)
+    return libxsvf_svf_packet(&h, index, final);
+  return -1; // NULL file_getbyte pointer supplied
+}

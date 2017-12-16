@@ -34,5 +34,6 @@ class LibXSVF
     int scan(); // function body is in LibXSVF.cpp
     uint32_t id(); // function body is in LibXSVF.cpp
     int program(String filename, int x); // program the device with some file
+    int play_svf_packet(int index, uint8_t *buffer, int len, bool final); // program the device with some file
 };
 

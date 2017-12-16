@@ -19,13 +19,34 @@
  */
 
 #include "libxsvf.h"
+#include <stdio.h>
 
+/*
+this function will filter out comments, whitespaces
+nad line terminations and return one by one command as
+contiguous string in the buffer.
+return value:
+-2 buffer empty. try again later
+-1 error or unexpected EOF
+ 0 expected EOF, normal end of data
+ 1 normal data, proceed with processing
+*/
 static int read_command(struct libxsvf_host *h, char **buffer_p, int *len_p)
 {
 	char *buffer = *buffer_p;
-	int braket_mode = 0;
-	int len = *len_p;
-	int p = 0;
+	int len;
+	static int braket_mode = 0;
+	static int comment_mode = 0;
+	static int p = 0;
+	if(len_p == NULL)
+	{
+	  p = 0;
+	  braket_mode = 0;
+	  comment_mode = 0;
+	  return 0;
+	}
+	
+	len = *len_p;
 
 	while (1)
 	{
@@ -36,6 +57,7 @@ static int read_command(struct libxsvf_host *h, char **buffer_p, int *len_p)
 			*len_p = len;
 			if (!buffer) {
 				LIBXSVF_HOST_REPORT_ERROR("Allocating memory failed.");
+				p = 0;
 				return -1;
 			}
 		}
@@ -44,33 +66,42 @@ static int read_command(struct libxsvf_host *h, char **buffer_p, int *len_p)
 		int ch = LIBXSVF_HOST_GETBYTE();
 		if (ch < 0) {
 handle_eof:
+			if (ch == -2) /* temporary buffer empty */
+				return -2; /* keep value of 'p', exit now and try again later */
 			if (p == 0)
 				return 0;
+			p = 0;
+			comment_mode = 0;
+			braket_mode = 0;
 			LIBXSVF_HOST_REPORT_ERROR("Unexpected EOF.");
 			return -1;
 		}
+		if (comment_mode != 0)
+		{
+			if (ch < 0)
+				goto handle_eof;
+			if (ch < ' ' && ch != '\t')
+				goto insert_eol;
+			continue; // keep running while() loop
+		}
 		if (ch <= ' ') {
 insert_eol:
-			if (!braket_mode && p > 0 && buffer[p-1] != ' ')
+			if (comment_mode == 0 && braket_mode == 0 && p > 0 && buffer[p-1] != ' ')
 				buffer[p++] = ' ';
-			continue;
+			comment_mode = 0;
+			continue; // keep running while() loop
 		}
 		if (ch == '!') {
-skip_to_eol:
-			while (1) {
-				ch = LIBXSVF_HOST_GETBYTE();
-				if (ch < 0)
-					goto handle_eof;
-				if (ch < ' ' && ch != '\t')
-					goto insert_eol;
-			}
+			comment_mode = 1;
+			continue; // keep running while() loop
 		}
 		if (ch == '/' && p > 0 && buffer[p-1] == '/') {
 			p--;
-			goto skip_to_eol;
+			comment_mode = 1;
+			continue; // keep running while() loop
 		}
 		if (ch == ';')
-			break;
+			break; // exit while loop immediately
 		if (ch == '(') {
 			if (!braket_mode && p > 0 && buffer[p-1] != ' ')
 				buffer[p++] = ' ';
@@ -86,6 +117,7 @@ skip_to_eol:
 				buffer[p++] = ' ';
 		}
 	}
+	p = 0;
 	return 1;
 }
 
@@ -144,6 +176,19 @@ struct bitdata_s {
 	unsigned char *ret_mask;
 	int has_tdo_data;
 };
+
+static void bitdata_zero(struct bitdata_s *bd)
+{
+	bd->len = 0;
+	bd->alloced_len = 0;
+	bd->alloced_bytes = 0;
+	bd->tdi_data = (void*)0;
+	bd->tdi_mask = (void*)0;
+	bd->tdo_data = (void*)0;
+	bd->tdo_mask = (void*)0;
+	bd->ret_mask = (void*)0;
+	bd->has_tdo_data = 0;
+}
 
 static void bitdata_free(struct libxsvf_host *h, struct bitdata_s *bd, int offset)
 {
@@ -325,6 +370,488 @@ static int bitdata_play(struct libxsvf_host *h, struct bitdata_s *bd, enum libxs
 	return -1;
 }
 
+/*
+Streaming feed the SVF file, repeatedy call this
+as each data packet becomes available
+len is not used as length but as a command to initialize or finish
+Start: len == 0
+Normal: len > 0
+End: len == -1
+repeat-call it while return value > 0
+Return: -1 on error
+*/
+int libxsvf_feed(struct libxsvf_host *h, int len)
+{
+	static char *command_buffer = (void*)0;
+	static int command_buffer_len = 0;
+	static int rc, i;
+
+	static struct bitdata_s bd_hdr = { 0, 0, 0, (void*)0, (void*)0, (void*)0, (void*)0, (void*)0 };
+	static struct bitdata_s bd_hir = { 0, 0, 0, (void*)0, (void*)0, (void*)0, (void*)0, (void*)0 };
+	static struct bitdata_s bd_tdr = { 0, 0, 0, (void*)0, (void*)0, (void*)0, (void*)0, (void*)0 };
+	static struct bitdata_s bd_tir = { 0, 0, 0, (void*)0, (void*)0, (void*)0, (void*)0, (void*)0 };
+	static struct bitdata_s bd_sdr = { 0, 0, 0, (void*)0, (void*)0, (void*)0, (void*)0, (void*)0 };
+	static struct bitdata_s bd_sir = { 0, 0, 0, (void*)0, (void*)0, (void*)0, (void*)0, (void*)0 };
+
+	static int state_endir = LIBXSVF_TAP_IDLE;
+	static int state_enddr = LIBXSVF_TAP_IDLE;
+	static int state_run = LIBXSVF_TAP_IDLE;
+	static int state_endrun = LIBXSVF_TAP_IDLE;
+
+        static int cmd_count = 0;
+        static char cmd_reportstring[256];
+
+        if(len == 0)
+        {
+		/* 0 len means stream start, reset all state vars and exit */
+		command_buffer = (void*)0;
+		command_buffer_len = 0;
+		rc = 0; /* allow further processing */
+
+		bitdata_zero(&bd_hdr);
+		bitdata_zero(&bd_hir);
+		bitdata_zero(&bd_tdr);
+		bitdata_zero(&bd_tir);
+		bitdata_zero(&bd_sdr);
+		bitdata_zero(&bd_sir);
+
+		state_endir = LIBXSVF_TAP_IDLE;
+		state_enddr = LIBXSVF_TAP_IDLE;
+		state_run = LIBXSVF_TAP_IDLE;
+		state_endrun = LIBXSVF_TAP_IDLE;
+
+		cmd_count = 0;
+		cmd_reportstring[0] = '\0';
+		
+		read_command(h, &command_buffer, NULL); /* zero buffer reading pointer */
+
+		return 0;
+        }
+
+        if(len == -1)
+        {
+		/* -1 len means the end of stream, free the buffers */
+		if (LIBXSVF_HOST_SYNC() != 0 && rc >= 0 ) {
+			LIBXSVF_HOST_REPORT_ERROR("TDO mismatch.");
+			rc = -1;
+		}
+
+		bitdata_free(h, &bd_hdr, LIBXSVF_MEM_SVF_HDR_TDI_DATA);
+		bitdata_free(h, &bd_hir, LIBXSVF_MEM_SVF_HIR_TDI_DATA);
+		bitdata_free(h, &bd_tdr, LIBXSVF_MEM_SVF_TDR_TDI_DATA);
+		bitdata_free(h, &bd_tir, LIBXSVF_MEM_SVF_TIR_TDI_DATA);
+		bitdata_free(h, &bd_sdr, LIBXSVF_MEM_SVF_SDR_TDI_DATA);
+		bitdata_free(h, &bd_sir, LIBXSVF_MEM_SVF_SIR_TDI_DATA);
+
+		LIBXSVF_HOST_REALLOC(command_buffer, 0, LIBXSVF_MEM_SVF_COMMANDBUF);
+		return -1;
+        }
+
+        if(rc < 0)
+        	return rc; /* after first error, don't process anything further */
+	
+	#if 0
+	// debugging read_command() parser
+	while(rc >= 0)
+	{
+		rc = read_command(h, &command_buffer, &command_buffer_len);
+		if(rc == -2)
+		{
+			rc = 0;
+			return -2;
+		}
+		read_command(h, &command_buffer, NULL); // reset internal p
+		if(rc >= 0)
+			printf(">>%s<<\n", command_buffer);
+	}
+	return 2;
+	#endif
+
+        /* len > 0, process chunk of data */
+        if(1)
+	while (1)
+	{
+		rc = read_command(h, &command_buffer, &command_buffer_len);
+		if(rc == -2) /* buffer empty */
+		{
+			rc = 0; /* allow continuation when called next time */
+			return -2;
+		}
+		read_command(h, &command_buffer, NULL); // reset internal p
+
+		if (rc <= 0)
+			break;
+		
+
+		cmd_count++;
+		#if 0
+		if((cmd_count % 1000) == 0)
+		{
+			// print progress every 1000 commands
+			// sprintf(cmd_reportstring, "%d commands", cmd_count);
+			LIBXSVF_HOST_REPORT_ERROR(cmd_reportstring);
+		}
+		#endif
+		const char *p = command_buffer;
+
+		LIBXSVF_HOST_REPORT_STATUS(command_buffer);
+
+		if (!strtokencmp(p, "ENDIR")) {
+			p += strtokenskip(p);
+			state_endir = token2tapstate(p);
+			if (state_endir < 0)
+				goto syntax_error;
+			p += strtokenskip(p);
+			goto eol_check;
+		}
+
+		if (!strtokencmp(p, "ENDDR")) {
+			p += strtokenskip(p);
+			state_enddr = token2tapstate(p);
+			if (state_endir < 0)
+				goto syntax_error;
+			p += strtokenskip(p);
+			goto eol_check;
+		}
+
+		if (!strtokencmp(p, "FREQUENCY")) {
+			unsigned long number = 0;
+			int got_decimal_point = 0;
+			int decimal_digits = 0;
+			int exp = 0;
+			p += strtokenskip(p);
+			if (*p < '0' || *p > '9')
+				goto syntax_error;
+			while ((*p >= '0' && *p <= '9') || (*p == '.')) {
+				if (*p == '.') {
+					got_decimal_point = 1;
+				} else {
+					if (got_decimal_point)
+						decimal_digits++;
+					number = number*10 + (*p - '0');
+				}
+				p++;
+			}
+			if(*p == 'E' || *p == 'e') {
+				p++;
+				if (*p == '+')
+					p++;
+				while (*p >= '0' && *p <= '9') {
+					exp = exp*10 + (*p - '0');
+					p++;
+				}
+				exp -= decimal_digits;
+				if (exp < 0)
+					goto syntax_error;
+				for(i=0; i<exp; i++)
+					number *= 10;
+			}
+			while (*p == ' ') {
+				p++;
+			}
+			p += strtokenskip(p);
+			if (LIBXSVF_HOST_SET_FREQUENCY(number) < 0) {
+				LIBXSVF_HOST_REPORT_ERROR("FREQUENCY command failed!");
+				goto error;
+			}
+			goto eol_check;
+		}
+
+		if (!strtokencmp(p, "HDR")) {
+			p += strtokenskip(p);
+			p = bitdata_parse(h, p, &bd_hdr, LIBXSVF_MEM_SVF_HDR_TDI_DATA);
+			if (!p)
+				goto syntax_error;
+			goto eol_check;
+		}
+
+		if (!strtokencmp(p, "HIR")) {
+			p += strtokenskip(p);
+			p = bitdata_parse(h, p, &bd_hir, LIBXSVF_MEM_SVF_HIR_TDI_DATA);
+			if (!p)
+				goto syntax_error;
+			goto eol_check;
+		}
+
+		if (!strtokencmp(p, "PIO") || !strtokencmp(p, "PIOMAP")) {
+			goto unsupported_error;
+		}
+
+		if (!strtokencmp(p, "RUNTEST")) {
+			p += strtokenskip(p);
+			int tck_count = -1;
+			int sck_count = -1;
+			int min_time = -1;
+			int max_time = -1;
+			while (*p) {
+			        // printf("parsing p=\"%s\"\n", p);
+				int got_maximum = 0;
+				if (!strtokencmp(p, "MAXIMUM")) {
+					p += strtokenskip(p);
+					got_maximum = 1;
+				}
+				int got_endstate = 0;
+				if (!strtokencmp(p, "ENDSTATE")) {
+					p += strtokenskip(p);
+					got_endstate = 1;
+				}
+				int st = token2tapstate(p);
+				if (st >= 0) {
+					p += strtokenskip(p);
+					if (got_endstate)
+						state_endrun = st;
+					else
+						state_run = st;
+					continue;
+				}
+				if (*p < '0' || *p > '9')
+					goto syntax_error;
+				int number = 0;
+				int exp = 0, expsign = 1;
+				int number_e6, exp_e6;
+				while (*p >= '0' && *p <= '9') {
+					number = number*10 + (*p - '0');
+					p++;
+				}
+				if(*p == '.')
+				{
+					p++;
+					while (*p >= '0' && *p <= '9')
+						p++;
+					// FIXME: accept fractional part
+				}
+				if(*p == 'E' || *p == 'e') {
+					p++;
+					if(*p == '-') {
+						expsign = -1;
+						p++;
+					}
+					while (*p >= '0' && *p <= '9') {
+						exp = exp*10 + (*p - '0');
+						p++;
+					}
+					exp = exp * expsign;
+					number_e6 = number;
+					exp_e6 = exp + 6;
+					while (exp < 0) {
+						number /= 10;
+						exp++;
+					}
+					while (exp > 0) {
+						number *= 10;
+						exp--;
+					}
+					while (exp_e6 < 0) {
+						number_e6 /= 10;
+						exp_e6++;
+					}
+					while (exp_e6 > 0) {
+						number_e6 *= 10;
+						exp_e6--;
+					}
+				} else {
+					number_e6 = number * 1000000;
+				}
+				while (*p == ' ') {
+					p++;
+				}
+				if (!strtokencmp(p, "SEC")) {
+					p += strtokenskip(p);
+					if (got_maximum)
+						max_time = number_e6;
+					else
+						min_time = number_e6;
+					continue;
+				}
+				if (!strtokencmp(p, "TCK")) {
+					p += strtokenskip(p);
+					tck_count = number;
+					continue;
+				}
+				if (!strtokencmp(p, "SCK")) {
+					p += strtokenskip(p);
+					sck_count = number;
+					continue;
+				}
+				goto syntax_error;
+			}
+			if (libxsvf_tap_walk(h, state_run) < 0)
+				goto error;
+			if (max_time >= 0) {
+				LIBXSVF_HOST_REPORT_ERROR("WARNING: Maximum time in SVF RUNTEST command is ignored.");
+			}
+			if (sck_count >= 0) {
+				for (i=0; i < sck_count; i++) {
+					LIBXSVF_HOST_PULSE_SCK();
+				}
+			}
+			if (min_time >= 0 || tck_count >= 0) {
+				LIBXSVF_HOST_UDELAY(min_time >= 0 ? min_time : 0, 0, tck_count >= 0 ? tck_count : 0);
+			}
+			if (libxsvf_tap_walk(h, state_endrun) < 0)
+				goto error;
+			goto eol_check;
+		}
+
+		if (!strtokencmp(p, "SDR")) {
+			p += strtokenskip(p);
+			p = bitdata_parse(h, p, &bd_sdr, LIBXSVF_MEM_SVF_SDR_TDI_DATA);
+			if (!p)
+				goto syntax_error;
+			if (libxsvf_tap_walk(h, LIBXSVF_TAP_DRSHIFT) < 0)
+				goto error;
+			if (bitdata_play(h, &bd_hdr, bd_sdr.len+bd_tdr.len > 0 ? LIBXSVF_TAP_DRSHIFT : state_enddr) < 0)
+				goto error;
+			if (bitdata_play(h, &bd_sdr, bd_tdr.len > 0 ? LIBXSVF_TAP_DRSHIFT : state_enddr) < 0)
+				goto error;
+			if (bitdata_play(h, &bd_tdr, state_enddr) < 0)
+				goto error;
+			if (libxsvf_tap_walk(h, state_enddr) < 0)
+				goto error;
+			goto eol_check;
+		}
+
+		if (!strtokencmp(p, "SIR")) {
+			p += strtokenskip(p);
+			p = bitdata_parse(h, p, &bd_sir, LIBXSVF_MEM_SVF_SIR_TDI_DATA);
+			if (!p)
+				goto syntax_error;
+			if (libxsvf_tap_walk(h, LIBXSVF_TAP_IRSHIFT) < 0)
+				goto error;
+			if (bitdata_play(h, &bd_hir, bd_sir.len+bd_tir.len > 0 ? LIBXSVF_TAP_IRSHIFT : state_endir) < 0)
+				goto error;
+			if (bitdata_play(h, &bd_sir, bd_tir.len > 0 ? LIBXSVF_TAP_IRSHIFT : state_endir) < 0)
+				goto error;
+			if (bitdata_play(h, &bd_tir, state_endir) < 0)
+				goto error;
+			if (libxsvf_tap_walk(h, state_endir) < 0)
+				goto error;
+			goto eol_check;
+		}
+
+		if (!strtokencmp(p, "STATE")) {
+			p += strtokenskip(p);
+			while (*p) {
+				int st = token2tapstate(p);
+				if (st < 0)
+					goto syntax_error;
+				if (libxsvf_tap_walk(h, st) < 0)
+					goto error;
+				p += strtokenskip(p);
+			}
+			goto eol_check;
+		}
+
+		if (!strtokencmp(p, "TDR")) {
+			p += strtokenskip(p);
+			p = bitdata_parse(h, p, &bd_tdr, LIBXSVF_MEM_SVF_TDR_TDI_DATA);
+			if (!p)
+				goto syntax_error;
+			goto eol_check;
+		}
+
+		if (!strtokencmp(p, "TIR")) {
+			p += strtokenskip(p);
+			p = bitdata_parse(h, p, &bd_tir, LIBXSVF_MEM_SVF_TIR_TDI_DATA);
+			if (!p)
+				goto syntax_error;
+			goto eol_check;
+		}
+
+		if (!strtokencmp(p, "TRST")) {
+			p += strtokenskip(p);
+			if (!strtokencmp(p, "ON")) {
+				p += strtokenskip(p);
+				LIBXSVF_HOST_SET_TRST(1);
+				goto eol_check;
+			}
+			if (!strtokencmp(p, "OFF")) {
+				p += strtokenskip(p);
+				LIBXSVF_HOST_SET_TRST(0);
+				goto eol_check;
+			}
+			if (!strtokencmp(p, "Z")) {
+				p += strtokenskip(p);
+				LIBXSVF_HOST_SET_TRST(-1);
+				goto eol_check;
+			}
+			if (!strtokencmp(p, "ABSENT")) {
+				p += strtokenskip(p);
+				LIBXSVF_HOST_SET_TRST(-2);
+				goto eol_check;
+			}
+			goto syntax_error;
+		}
+
+eol_check:
+		while (*p == ' ')
+			p++;
+		if (*p == 0)
+			continue;
+
+syntax_error:
+		sprintf(cmd_reportstring, "Command %d: SVF Syntax Error:", cmd_count);
+		LIBXSVF_HOST_REPORT_ERROR(cmd_reportstring);
+		if (0) {
+unsupported_error:
+			LIBXSVF_HOST_REPORT_ERROR("Error in SVF input: unsupported command:");
+		}
+		LIBXSVF_HOST_REPORT_ERROR(command_buffer);
+error:
+		rc = -1;
+		break;
+	}
+
+        return rc;
+}
+
+int libxsvf_svf_packet(struct libxsvf_host *h, int index, int final)
+{
+	int rc = 1;
+	if(index == 0)
+	{
+		rc = 1;
+		/* open tap */
+		#if 1
+		h->tap_state = LIBXSVF_TAP_INIT;
+		if (LIBXSVF_HOST_SETUP() < 0) {
+			LIBXSVF_HOST_REPORT_ERROR("Setup of JTAG interface failed.");
+			return -1;
+		}
+		#endif
+		libxsvf_feed(h, 0); // reset vars, start the stream
+	}
+	rc = libxsvf_feed(h, 1);
+	if(final)
+	{
+		/* close tap */
+		#if 1
+		libxsvf_tap_walk(h, LIBXSVF_TAP_RESET);
+		if (LIBXSVF_HOST_SYNC() != 0 && rc >= 0 ) {
+			LIBXSVF_HOST_REPORT_ERROR("TDO mismatch in TAP reset. (this is not possible!)");
+			rc = -1;
+		}
+		#endif
+		LIBXSVF_HOST_SHUTDOWN();
+		libxsvf_feed(h, -1); // last call to finish
+	}
+	return rc;
+}
+
+/* streamable replacement for libxsvf_svf, should work the same
+** first examples work, further testing is recommended
+*/
+int libxsvf_svf_stream(struct libxsvf_host *h)
+{
+	int len = 1;
+	char buf[256];
+	int rc = 1;
+	libxsvf_feed(h, 0); // reset vars, start the stream
+	while(rc > 0)
+	  rc = libxsvf_feed(h, 1);
+	return libxsvf_feed(h, -1); // last call to finish
+}
+
 int libxsvf_svf(struct libxsvf_host *h)
 {
 	char *command_buffer = (void*)0;
@@ -350,16 +877,17 @@ int libxsvf_svf(struct libxsvf_host *h)
 		rc = read_command(h, &command_buffer, &command_buffer_len);
 
 		if (rc <= 0)
-			break;	
+			break;
 
 		cmd_count++;
+		#if 0
 		if((cmd_count % 1000) == 0)
 		{
 			// print progress every 1000 commands
-			sprintf(cmd_reportstring, "%d commands", cmd_count);
+			// sprintf(cmd_reportstring, "%d commands", cmd_count);
 			LIBXSVF_HOST_REPORT_ERROR(cmd_reportstring);
 		}
-
+		#endif
 		const char *p = command_buffer;
 
 		LIBXSVF_HOST_REPORT_STATUS(command_buffer);
