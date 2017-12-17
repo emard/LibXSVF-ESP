@@ -85,3 +85,4 @@ to change pinout.
     [ ] make first page be aupload page
     [ ] SD card support
     [ ] OLED and buttons support
+    [ ] websvf AP mode

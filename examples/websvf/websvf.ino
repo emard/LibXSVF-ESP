@@ -16,9 +16,9 @@
 #include <SPIFFSEditor.h>
 #include <LibXSVF.h>
 
-const char *ssid = "ra";
-const char *password = "GigabyteBrix";
-const char *hostName = "esp-async";
+const char *ssid = "ap_name";
+const char *password = "password";
+const char *hostName = "websvf";
 const char *http_username = "admin";
 const char *http_password = "admin";
 
@@ -31,14 +31,14 @@ AsyncEventSource events("/events");
 /*
 > To change JTAG pinout, edit file
 > ~/Arduino/libraries/LibXSVF-ESP8266/src/trunk/xsvftool-esp8266.c
-> ULX2S wire     NodeMCU Arduino
-> ---   ----     --      -------
+> FPGA  wire     ESP32
+> ---   ----     -------
 > VCC   brown
 > GND   black    GND
-> TCK   yellow   D       18
-> TDO   green    D       19
-> TDI   violett  D       23
-> TMS   blue     D       21
+> TCK   yellow   18
+> TDO   green    19
+> TDI   violett  23
+> TMS   blue     21
 */
 LibXSVF jtag = LibXSVF();
 
