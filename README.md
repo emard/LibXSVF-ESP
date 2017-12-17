@@ -49,6 +49,8 @@ ESP32 (examples/websvf)
 
 Process packetized SVF stream from web file upload.
 Packets need to come in sequential order.
+Open page esp32.lan, enter any string and press
+ENTER, it will show JTAG device ID.
 Open page esp32.lan/upload.htm
 navigate to SVF file and click upload. 2MB SVF file
 uploads in 12 seoonds.
@@ -82,9 +84,12 @@ to change pinout.
 
     [ ] fix memory leaks, if WEB TCP connection is broken,
         it won't free() what it had malloc()'d
-    [ ] make first page be aupload page
+    [ ] make upload page be the home page
     [ ] SD card support
     [ ] OLED and buttons support
     [ ] websvf AP mode
     [ ] progress bar
-    [ ] after upload show status like success or error
+    [ ] after upload show status, elapsed time, success or error
+    [ ] test websvf on ESP8266
+    [ ] SPI or DMA (remote control on ESP32) acceleration
+
