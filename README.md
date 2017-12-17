@@ -86,3 +86,5 @@ to change pinout.
     [ ] SD card support
     [ ] OLED and buttons support
     [ ] websvf AP mode
+    [ ] progress bar
+    [ ] after upload show status like success or error
