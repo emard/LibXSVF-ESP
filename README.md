@@ -57,8 +57,8 @@ Open page esp32.lan/upload.htm
 navigate to SVF file and click upload. 2MB SVF file
 uploads in 12 seoonds.
 ESP32 needs to buffer each command, remember to
-limit command size at SVF file generation.
-Lattice example:
+limit command size to 128 kbit or less at SVF file generation.
+Lattice example that limits to 8 kbit (works up to 128):
 
     ddtcmd  -oft -svfsingle -revd -maxdata 8 -if bitstream.xcf -of bitstream.svf
 
