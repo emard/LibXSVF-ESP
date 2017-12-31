@@ -1,131 +1,73 @@
-<!--
-  FSWebServer - Example Index Page
-  Copyright (c) 2015 Hristo Gochkov. All rights reserved.
-  This file is part of the ESP8266WebServer library for Arduino environment.
-
-  This library is free software; you can redistribute it and/or
-  modify it under the terms of the GNU Lesser General Public
-  License as published by the Free Software Foundation; either
-  version 2.1 of the License, or (at your option) any later version.
-  This library is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  Lesser General Public License for more details.
-  You should have received a copy of the GNU Lesser General Public
-  License along with this library; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
--->
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta http-equiv="Content-type" content="text/html; charset=utf-8">
-    <title>WebSocketTester</title>
-    <style type="text/css" media="screen">
-    body {
-      margin:0;
-      padding:0;
-      background-color: black;
-    }
+<head>
+    <title>Upload Files using XMLHttpRequest - Minimal</title>
 
-    #dbg, #input_div, #input_el {
-      font-family: monaco;
-      font-size: 12px;
-      line-height: 13px;
-      color: #AAA;
-    }
-
-    #dbg, #input_div {
-      margin:0;
-      padding:0;
-      padding-left:4px;
-    }
-
-    #input_el {
-      width:98%;
-      background-color: rgba(0,0,0,0);
-      border: 0px;
-    }
-    #input_el:focus {
-      outline: none;
-    }
-    </style>
     <script type="text/javascript">
-    var ws = null;
-    function ge(s){ return document.getElementById(s);}
-    function ce(s){ return document.createElement(s);}
-    function stb(){ window.scrollTo(0, document.body.scrollHeight || document.documentElement.scrollHeight); }
-    function sendBlob(str){
-      var buf = new Uint8Array(str.length);
-      for (var i = 0; i < str.length; ++i) buf[i] = str.charCodeAt(i);
-      ws.send(buf);
-    }
-    function addMessage(m){
-      var msg = ce("div");
-      msg.innerText = m;
-      ge("dbg").appendChild(msg);
-      stb();
-    }
-    function startSocket(){
-      ws = new WebSocket('ws://'+document.location.host+'/ws',['arduino']);
-      ws.binaryType = "arraybuffer";
-      ws.onopen = function(e){
-        addMessage("Connected");
-      };
-      ws.onclose = function(e){
-        addMessage("Disconnected");
-      };
-      ws.onerror = function(e){
-        console.log("ws error", e);
-        addMessage("Error");
-      };
-      ws.onmessage = function(e){
-        var msg = "";
-        if(e.data instanceof ArrayBuffer){
-          msg = "BIN:";
-          var bytes = new Uint8Array(e.data);
-          for (var i = 0; i < bytes.length; i++) {
-            msg += String.fromCharCode(bytes[i]);
-          }
-        } else {
-          msg = "TXT:"+e.data;
-        }
-        addMessage(msg);
-      };
-      ge("input_el").onkeydown = function(e){
-        stb();
-        if(e.keyCode == 13 && ge("input_el").value != ""){
-          ws.send(ge("input_el").value);
-          ge("input_el").value = "";
+      function fileSelected() {
+        var file = document.getElementById('fileToUpload').files[0];
+        if (file) {
+          var fileSize = 0;
+          if (file.size > 1024 * 1024)
+            fileSize = (Math.round(file.size * 100 / (1024 * 1024)) / 100).toString() + 'MB';
+          else
+            fileSize = (Math.round(file.size * 100 / 1024) / 100).toString() + 'KB';
+
+          document.getElementById('fileName').innerHTML = 'Name: ' + file.name;
+          document.getElementById('fileSize').innerHTML = 'Size: ' + fileSize;
+          document.getElementById('fileType').innerHTML = 'Type: ' + file.type;
         }
       }
-    }
-    function startEvents(){
-      var es = new EventSource('/events');
-      es.onopen = function(e) {
-        addMessage("Events Opened");
-      };
-      es.onerror = function(e) {
-        if (e.target.readyState != EventSource.OPEN) {
-          addMessage("Events Closed");
+
+      function uploadFile() {
+        var fd = new FormData();
+        fd.append("fileToUpload", document.getElementById('fileToUpload').files[0]);
+        var xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener("progress", uploadProgress, false);
+        xhr.addEventListener("load", uploadComplete, false);
+        xhr.addEventListener("error", uploadFailed, false);
+        xhr.addEventListener("abort", uploadCanceled, false);
+        xhr.open("POST", "UploadMinimal.aspx");
+        xhr.send(fd);
+      }
+
+      function uploadProgress(evt) {
+        if (evt.lengthComputable) {
+          var percentComplete = Math.round(evt.loaded * 100 / evt.total);
+          document.getElementById('progressNumber').innerHTML = percentComplete.toString() + '%';
         }
-      };
-      es.onmessage = function(e) {
-        addMessage("Event: " + e.data);
-      };
-      es.addEventListener('ota', function(e) {
-        addMessage("Event[ota]: " + e.data);
-      }, false);
-    }
-    function onBodyLoad(){
-      startSocket();
-      startEvents();
-    }
+        else {
+          document.getElementById('progressNumber').innerHTML = 'unable to compute';
+        }
+      }
+
+      function uploadComplete(evt) {
+        /* This event is raised when the server send back a response */
+        alert(evt.target.responseText);
+      }
+
+      function uploadFailed(evt) {
+        alert("There was an error attempting to upload the file.");
+      }
+
+      function uploadCanceled(evt) {
+        alert("The upload has been canceled by the user or the browser dropped the connection.");
+      }
     </script>
-  </head>
-  <body id="body" onload="onBodyLoad()">
-    <pre id="dbg"></pre>
-    <div id="input_div">
-      $<input type="text" value="" id="input_el">
+</head>
+<body>
+  <form id="form1" enctype="multipart/form-data" method="post" action="Upload.aspx">
+    <div class="row">
+      <label for="fileToUpload">Select a File to Upload</label><br />
+      <input type="file" name="fileToUpload" id="fileToUpload" onchange="fileSelected();"/>
     </div>
-  </body>
+    <div id="fileName"></div>
+    <div id="fileSize"></div>
+    <div id="fileType"></div>
+    <div class="row">
+      <input type="button" onclick="uploadFile()" value="Upload" />
+    </div>
+    <div id="progressNumber"></div>
+  </form>
+</body>
 </html>
