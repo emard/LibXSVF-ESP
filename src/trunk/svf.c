@@ -180,6 +180,18 @@ struct bitdata_s {
 static void bitdata_zero(struct bitdata_s *bd)
 {
 	bd->len = 0;
+	#if 0
+	// we don't initialize this at start of each
+	// file upload to avoid memory leaks from
+	// lost memory allocation information in case
+	// connection is lost.
+	// Realloc will always be called on
+	// bitdata pointers.
+	// static initializer will set them
+	// at zero (NULL) so first realloc will effectively
+	// do malloc for the first time and they are supposed
+	// to be realloced many times. Only when tey are free()'d
+	// (realloced to 0-size) then they can be overwritten with zero
 	bd->alloced_len = 0;
 	bd->alloced_bytes = 0;
 	bd->tdi_data = (void*)0;
@@ -187,6 +199,7 @@ static void bitdata_zero(struct bitdata_s *bd)
 	bd->tdo_data = (void*)0;
 	bd->tdo_mask = (void*)0;
 	bd->ret_mask = (void*)0;
+	#endif
 	bd->has_tdo_data = 0;
 }
 
