@@ -101,6 +101,7 @@ static int io_tdo()
 
 struct udata_s {
 	int (*file_getbyte)();
+	int line;
 	int verbose;
 	int clockcount;
 	int bitcount_tdi;
@@ -164,7 +165,10 @@ static void h_udelay(struct libxsvf_host *h, long usecs, int tms, long num_tck)
 static int h_getbyte(struct libxsvf_host *h)
 {
 	struct udata_s *u = h->user_data;
-	return u->file_getbyte(); // returns same as fgetc()
+	int retval = u->file_getbyte();
+	if(retval == '\n')
+	  u->line++;
+	return retval; // returns same as fgetc()
 }
 
 static int h_pulse_tck(struct libxsvf_host *h, int tms, int tdi, int tdo, int rmask, int sync)
@@ -253,7 +257,8 @@ static void h_report_status(struct libxsvf_host *h, const char *message)
 static void h_report_error(struct libxsvf_host *h, const char *file, int line, const char *message)
 {
 	struct udata_s *u = h->user_data;
-	snprintf(u->report, 256, "[%s:%d] %s", file, line, message);
+	// snprintf(u->report, 256, "[%s:%d] %s", file, line, message);
+	snprintf(u->report, 256, "line %d: %s", u->line, message);
 	puts(u->report);
 	// printf("[%s:%d] %s\n", file, line, message);
 }
@@ -443,6 +448,8 @@ int xsvftool_esp8266_svf_packet(int (*packet_getbyte)(), int index, int final, c
   u.file_getbyte = packet_getbyte;
   if(u.file_getbyte)
   {
+    if(index == 0)
+      u.line = 1;
     int retval = libxsvf_svf_packet(&h, index, final);
     strcpy(report, u.report);
     return retval;
