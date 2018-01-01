@@ -177,7 +177,7 @@ struct bitdata_s {
 	int has_tdo_data;
 };
 
-static void bitdata_zero(struct bitdata_s *bd)
+static void bitdata_zero(struct libxsvf_host *h, struct bitdata_s *bd)
 {
 	bd->len = 0;
 	#if 0
@@ -194,6 +194,16 @@ static void bitdata_zero(struct bitdata_s *bd)
 	// (realloced to 0-size) then they can be overwritten with zero
 	bd->alloced_len = 0;
 	bd->alloced_bytes = 0;
+	if(bd->tdi_data)
+		LIBXSVF_HOST_REPORT_ERROR("Leak warning: Zeroing allocated bd->tdi_data");
+	if(bd->tdi_mask)
+		LIBXSVF_HOST_REPORT_ERROR("Leak warning: Zeroing allocated bd->tdi_mask");
+	if(bd->tdo_data)
+		LIBXSVF_HOST_REPORT_ERROR("Leak warning: Zeroing allocated bd->tdo_data");
+	if(bd->tdo_mask)
+		LIBXSVF_HOST_REPORT_ERROR("Leak warning: Zeroing allocated bd->tdo_mask");
+	if(bd->ret_mask)
+		LIBXSVF_HOST_REPORT_ERROR("Leak warning: Zeroing allocated bd->ret_mask");
 	bd->tdi_data = (void*)0;
 	bd->tdi_mask = (void*)0;
 	bd->tdo_data = (void*)0;
@@ -240,7 +250,6 @@ static const char *bitdata_parse(struct libxsvf_host *h, const char *p, struct b
 		p++;
 	}
 	if (bd->len != bd->alloced_len) {
-		bitdata_free(h, bd, offset);
 		bd->alloced_len = bd->len;
 		bd->alloced_bytes = (bd->len+7) / 8;
 	}
@@ -276,9 +285,7 @@ static const char *bitdata_parse(struct libxsvf_host *h, const char *p, struct b
 		}
 		if (!dp)
 			return (void*)0;
-		if (*dp == (void*)0) {
-			*dp = LIBXSVF_HOST_REALLOC(*dp, bd->alloced_bytes, offset+memnum);
-		}
+		*dp = LIBXSVF_HOST_REALLOC(*dp, bd->alloced_bytes, offset+memnum);
 		if (*dp == (void*)0) {
 			LIBXSVF_HOST_REPORT_ERROR("Allocating memory failed.");
 			return (void*)0;
@@ -421,12 +428,12 @@ int libxsvf_feed(struct libxsvf_host *h, int len)
 		command_buffer_len = 0;
 		rc = 0; /* allow further processing */
 
-		bitdata_zero(&bd_hdr);
-		bitdata_zero(&bd_hir);
-		bitdata_zero(&bd_tdr);
-		bitdata_zero(&bd_tir);
-		bitdata_zero(&bd_sdr);
-		bitdata_zero(&bd_sir);
+		bitdata_zero(h, &bd_hdr);
+		bitdata_zero(h, &bd_hir);
+		bitdata_zero(h, &bd_tdr);
+		bitdata_zero(h, &bd_tir);
+		bitdata_zero(h, &bd_sdr);
+		bitdata_zero(h, &bd_sir);
 
 		state_endir = LIBXSVF_TAP_IDLE;
 		state_enddr = LIBXSVF_TAP_IDLE;
@@ -637,6 +644,10 @@ int libxsvf_feed(struct libxsvf_host *h, int len)
 					p++;
 					if(*p == '-') {
 						expsign = -1;
+						p++;
+					}
+					if(*p == '+') {
+						expsign = 1;
 						p++;
 					}
 					while (*p >= '0' && *p <= '9') {
@@ -1033,6 +1044,10 @@ int libxsvf_svf(struct libxsvf_host *h)
 					p++;
 					if(*p == '-') {
 						expsign = -1;
+						p++;
+					}
+					if(*p == '+') {
+						expsign = 1;
 						p++;
 					}
 					while (*p >= '0' && *p <= '9') {
