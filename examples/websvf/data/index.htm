@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Upload Files using XMLHttpRequest - Minimal</title>
+    <title>ULX3S Uploader</title>
 
     <script type="text/javascript">
       function fileSelected() {
@@ -27,7 +27,7 @@
         xhr.addEventListener("load", uploadComplete, false);
         xhr.addEventListener("error", uploadFailed, false);
         xhr.addEventListener("abort", uploadCanceled, false);
-        xhr.open("POST", "UploadMinimal.aspx");
+        xhr.open(document.getElementById('form1').method, document.getElementById('form1').action);
         xhr.send(fd);
       }
 
@@ -56,7 +56,7 @@
     </script>
 </head>
 <body>
-  <form id="form1" enctype="multipart/form-data" method="post" action="Upload.aspx">
+  <form id="form1" enctype="multipart/form-data" method="post" action="index.htm">
     <div class="row">
       <label for="fileToUpload">Select a File to Upload</label><br />
       <input type="file" name="fileToUpload" id="fileToUpload" onchange="fileSelected();"/>
