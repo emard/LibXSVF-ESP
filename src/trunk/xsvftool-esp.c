@@ -422,19 +422,19 @@ int main(int argc, char **argv)
 }
 #endif
 
-int xsvftool_esp8266_scan(void)
+int xsvftool_esp_scan(void)
 {
   u.idcode = 0; // clear previous scan result
   return libxsvf_play(&h, LIBXSVF_MODE_SCAN);
 }
 
 // return scan result (idcode)
-uint32_t xsvftool_esp8266_id(void)
+uint32_t xsvftool_esp_id(void)
 {
   return u.idcode;
 }
 
-int xsvftool_esp8266_program(int (*file_getbyte)(), int x)
+int xsvftool_esp_program(int (*file_getbyte)(), int x)
 {
   u.file_getbyte = file_getbyte;
   if(u.file_getbyte)
@@ -442,7 +442,7 @@ int xsvftool_esp8266_program(int (*file_getbyte)(), int x)
   return -1; // NULL file_getbyte pointer supplied
 }
 
-int xsvftool_esp8266_svf_packet(int (*packet_getbyte)(), int index, int final, char *report)
+int xsvftool_esp_svf_packet(int (*packet_getbyte)(), int index, int final, char *report)
 {
   u.verbose = 0;
   u.file_getbyte = packet_getbyte;

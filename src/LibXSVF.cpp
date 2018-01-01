@@ -5,10 +5,10 @@
 // 256-8192
 #define BUFFER_SIZE 8192
 
-extern "C" int xsvftool_esp8266_scan(void);
-extern "C" uint32_t xsvftool_esp8266_id(void);
-extern "C" int xsvftool_esp8266_program(int (*file_getbyte)(), int x);
-extern "C" int xsvftool_esp8266_svf_packet(int (*packet_getbyte)(), int index, int final, char *report);
+extern "C" int xsvftool_esp_scan(void);
+extern "C" uint32_t xsvftool_esp_id(void);
+extern "C" int xsvftool_esp_program(int (*file_getbyte)(), int x);
+extern "C" int xsvftool_esp_svf_packet(int (*packet_getbyte)(), int index, int final, char *report);
 
 struct libxsvf_file_buf
 {
@@ -29,12 +29,12 @@ void LibXSVF::begin(FS* fs)
 // scan should return some struct
 int LibXSVF::scan()
 {
-  return xsvftool_esp8266_scan();
+  return xsvftool_esp_scan();
 }
 
 uint32_t LibXSVF::id()
 {
-  return xsvftool_esp8266_id();
+  return xsvftool_esp_id();
 }
 
 int libxsvf_file_getbyte()
@@ -66,7 +66,7 @@ int LibXSVF::program(String filename, int x)
     rd.buffer = (uint8_t *)malloc(BUFFER_SIZE * sizeof(uint8_t));
     rd.count = 0;
     rd.ptr = 0;
-    retval = xsvftool_esp8266_program(libxsvf_file_getbyte, x);
+    retval = xsvftool_esp_program(libxsvf_file_getbyte, x);
     rd.file.close();
     pinMode(LED_BUILTIN, INPUT);
     free(rd.buffer);
@@ -110,5 +110,5 @@ int LibXSVF::play_svf_packet(int index, uint8_t *buffer, int len, bool final, ch
   rs.buffer = buffer;
   rs.count = len;
   rs.ptr = 0;
-  return xsvftool_esp8266_svf_packet(libxsvf_stream_getbyte, index, final ? 1 : 0, report);
+  return xsvftool_esp_svf_packet(libxsvf_stream_getbyte, index, final ? 1 : 0, report);
 }
