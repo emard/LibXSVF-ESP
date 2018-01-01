@@ -24,6 +24,12 @@
           // $id('fileType').innerHTML = 'Type: ' + file.type;
         }
       }
+      
+      function progress_empty() {
+        var progress = $id("progress").childNodes[0];
+        progress.style.backgroundPosition = 100 + "% 0";
+        progress.innerHTML = "Error";
+      }
 
       function uploadFile() {
         var fd = new FormData();
@@ -61,7 +67,10 @@
       function uploadComplete(evt) {
         /* This event is raised when the server send back a response */
         // alert(evt.target.responseText);
-        $id("report").innerHTML = evt.target.responseText;
+        var response = evt.target.responseText;
+        if (response.indexOf("Done") == -1)
+          progress_empty();
+        $id("report").innerHTML = response;
       }
 
       function uploadFailed(evt) {
