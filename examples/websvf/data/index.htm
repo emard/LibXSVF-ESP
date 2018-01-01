@@ -19,7 +19,7 @@
           else
             fileSize = (Math.round(file.size * 100 / 1024) / 100).toString() + 'KB';
 
-          $id('fileName').innerHTML = 'Name: ' + file.name;
+          // $id('fileName').innerHTML = 'File: ' + file.name;
           $id('fileSize').innerHTML = 'Size: ' + fileSize;
           // $id('fileType').innerHTML = 'Type: ' + file.type;
         }
@@ -86,10 +86,11 @@
 <body>
   <form id="form1" enctype="multipart/form-data" method="post" action="index.htm">
     <div class="row">
-      <label for="fileToUpload">Select SVF File to Upload</label><br />
+      <label for="fileToUpload">Select SVF File</label>
+      or use <a href="svfupload.py" target="svfupload.py">svfupload.py<a>
+      <br />
       <input type="file" name="fileToUpload" id="fileToUpload" onchange="fileSelected();"/>
     </div>
-    <div id="fileName"></div>
     <div id="fileSize"></div>
     <div class="row">
       <input type="button" onclick="uploadFile()" value="Upload" />
