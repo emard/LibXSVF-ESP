@@ -107,6 +107,7 @@ struct udata_s {
 	int bitcount_tdo;
 	int retval_i;
 	int retval[256];
+	char report[256];
 	uint32_t idcode;
 };
 
@@ -251,7 +252,10 @@ static void h_report_status(struct libxsvf_host *h, const char *message)
 
 static void h_report_error(struct libxsvf_host *h, const char *file, int line, const char *message)
 {
-	printf("[%s:%d] %s\n", file, line, message);
+	struct udata_s *u = h->user_data;
+	snprintf(u->report, 256, "[%s:%d] %s", file, line, message);
+	puts(u->report);
+	// printf("[%s:%d] %s\n", file, line, message);
 }
 
 static int realloc_maxsize[LIBXSVF_MEM_NUM];
@@ -433,11 +437,15 @@ int xsvftool_esp8266_program(int (*file_getbyte)(), int x)
   return -1; // NULL file_getbyte pointer supplied
 }
 
-int xsvftool_esp8266_svf_packet(int (*packet_getbyte)(), int index, int final)
+int xsvftool_esp8266_svf_packet(int (*packet_getbyte)(), int index, int final, char *report)
 {
   u.verbose = 0;
   u.file_getbyte = packet_getbyte;
   if(u.file_getbyte)
-    return libxsvf_svf_packet(&h, index, final);
+  {
+    int retval = libxsvf_svf_packet(&h, index, final);
+    strcpy(report, u.report);
+    return retval;
+  }
   return -1; // NULL file_getbyte pointer supplied
 }

@@ -2,10 +2,16 @@
 <html>
 <head>
     <title>ULX3S Uploader</title>
+    <link rel="stylesheet" type="text/css" media="all" href="styles.css"/>
 
     <script type="text/javascript">
+      // shorten typing: document.getElementById -> $id
+      function $id(id) {
+        return document.getElementById(id);
+      }
+
       function fileSelected() {
-        var file = document.getElementById('fileToUpload').files[0];
+        var file = $id('fileToUpload').files[0];
         if (file) {
           var fileSize = 0;
           if (file.size > 1024 * 1024)
@@ -13,40 +19,53 @@
           else
             fileSize = (Math.round(file.size * 100 / 1024) / 100).toString() + 'KB';
 
-          document.getElementById('fileName').innerHTML = 'Name: ' + file.name;
-          document.getElementById('fileSize').innerHTML = 'Size: ' + fileSize;
-          document.getElementById('fileType').innerHTML = 'Type: ' + file.type;
+          $id('fileName').innerHTML = 'Name: ' + file.name;
+          $id('fileSize').innerHTML = 'Size: ' + fileSize;
+          // $id('fileType').innerHTML = 'Type: ' + file.type;
         }
       }
 
       function uploadFile() {
         var fd = new FormData();
-        fd.append("fileToUpload", document.getElementById('fileToUpload').files[0]);
+        fd.append("fileToUpload", $id('fileToUpload').files[0]);
+        $id("report").innerHTML = "Uploading...";
+        var progress = $id("progress").childNodes[0];
         var xhr = new XMLHttpRequest();
-        xhr.upload.addEventListener("progress", uploadProgress, false);
+        // text only
+        //xhr.upload.addEventListener("progress", uploadProgress, false); //
+        // graphical progress bar
+        xhr.upload.addEventListener("progress", function(e) {
+          // var pc = parseInt(100 - (e.loaded / e.total * 100));
+          var pc = Math.round(e.loaded * 100 / e.total);
+          var bar = Math.round(100 - pc);
+	  progress.style.backgroundPosition = bar + "% 0";
+	  progress.innerHTML = pc + "%";
+	}, false);
         xhr.addEventListener("load", uploadComplete, false);
         xhr.addEventListener("error", uploadFailed, false);
         xhr.addEventListener("abort", uploadCanceled, false);
-        xhr.open(document.getElementById('form1').method, document.getElementById('form1').action);
+        xhr.open($id('form1').method, $id('form1').action);
         xhr.send(fd);
       }
 
       function uploadProgress(evt) {
         if (evt.lengthComputable) {
           var percentComplete = Math.round(evt.loaded * 100 / evt.total);
-          document.getElementById('progressNumber').innerHTML = percentComplete.toString() + '%';
+          $id('progressNumber').innerHTML = percentComplete.toString() + '%';
         }
         else {
-          document.getElementById('progressNumber').innerHTML = 'unable to compute';
+          $id('progressNumber').innerHTML = 'unable to compute';
         }
       }
 
       function uploadComplete(evt) {
         /* This event is raised when the server send back a response */
-        alert(evt.target.responseText);
+        // alert(evt.target.responseText);
+        $id("report").innerHTML = evt.target.responseText;
       }
 
       function uploadFailed(evt) {
+        // pop-up window
         alert("There was an error attempting to upload the file.");
       }
 
@@ -58,16 +77,17 @@
 <body>
   <form id="form1" enctype="multipart/form-data" method="post" action="index.htm">
     <div class="row">
-      <label for="fileToUpload">Select a File to Upload</label><br />
+      <label for="fileToUpload">Select SVF File to Upload</label><br />
       <input type="file" name="fileToUpload" id="fileToUpload" onchange="fileSelected();"/>
     </div>
     <div id="fileName"></div>
     <div id="fileSize"></div>
-    <div id="fileType"></div>
     <div class="row">
       <input type="button" onclick="uploadFile()" value="Upload" />
     </div>
     <div id="progressNumber"></div>
   </form>
+  <div id="progress"><p>0%</p></div>
+  <div id="report"></div>
 </body>
 </html>

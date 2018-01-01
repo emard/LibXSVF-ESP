@@ -8,7 +8,7 @@
 extern "C" int xsvftool_esp8266_scan(void);
 extern "C" uint32_t xsvftool_esp8266_id(void);
 extern "C" int xsvftool_esp8266_program(int (*file_getbyte)(), int x);
-extern "C" int xsvftool_esp8266_svf_packet(int (*packet_getbyte)(), int index, int final);
+extern "C" int xsvftool_esp8266_svf_packet(int (*packet_getbyte)(), int index, int final, char *report);
 
 struct libxsvf_file_buf
 {
@@ -105,10 +105,10 @@ buffer: pointer to packet data payload
 len:    length of data in bytes
 final:  nonzero when last packet
 */
-int LibXSVF::play_svf_packet(int index, uint8_t *buffer, int len, bool final)
+int LibXSVF::play_svf_packet(int index, uint8_t *buffer, int len, bool final, char *report)
 {
   rs.buffer = buffer;
   rs.count = len;
   rs.ptr = 0;
-  return xsvftool_esp8266_svf_packet(libxsvf_stream_getbyte, index, final ? 1 : 0);
+  return xsvftool_esp8266_svf_packet(libxsvf_stream_getbyte, index, final ? 1 : 0, report);
 }

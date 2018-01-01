@@ -488,7 +488,6 @@ int libxsvf_feed(struct libxsvf_host *h, int len)
 	#endif
 
         /* len > 0, process chunk of data */
-        if(1)
 	while (1)
 	{
 		rc = read_command(h, &command_buffer, &command_buffer_len);
@@ -844,6 +843,7 @@ int libxsvf_svf_packet(struct libxsvf_host *h, int index, int final)
 		}
 		#endif
 		libxsvf_feed(h, 0); // reset vars, start the stream
+		LIBXSVF_HOST_REPORT_ERROR("Start");
 	}
 	rc = libxsvf_feed(h, 1);
 	if(final)

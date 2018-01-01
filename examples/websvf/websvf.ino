@@ -249,6 +249,7 @@ void setup(){
   server.onFileUpload([](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final){
     static int packet_counter;
     static int old_index;
+    static char report[256];
     if(!index)
     {
       Serial.printf("UploadStart: %s\n", filename.c_str());
@@ -263,9 +264,10 @@ void setup(){
       packet_counter++;
       old_index=index;
     #endif
-    jtag.play_svf_packet(index, data, len, final);
+    jtag.play_svf_packet(index, data, len, final, report);
     if(final)
     {
+      request->send(200, "text/plain", report);
       Serial.printf("UploadEnd: %s (%u)\n", filename.c_str(), index+len);
       digitalWrite(LED_BUILTIN, LOW);
     }
