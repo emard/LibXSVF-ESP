@@ -84,14 +84,15 @@ to change pinout.
 
 # TODO
 
-    [ ] fix memory leaks, if WEB TCP connection is broken,
+    [x] fix memory leaks, if WEB TCP connection is broken,
         it won't free() what it had malloc()'d
-    [ ] make upload page be the home page
+    [x] make upload page be the home page
     [ ] SD card support
     [ ] OLED and buttons support
     [ ] websvf AP mode
-    [ ] progress bar
-    [ ] after upload show status, elapsed time, success or error
+    [x] progress bar
+    [x] after upload show status, success or error
+    [ ] after upload show elapsed time
     [ ] test websvf on ESP8266
     [ ] SPI or DMA (remote control on ESP32) acceleration
 
