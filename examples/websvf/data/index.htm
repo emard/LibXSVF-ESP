@@ -9,6 +9,11 @@
       function $id(id) {
         return document.getElementById(id);
       }
+      
+      function enableUploadButtion() {
+        $id("uploadButton").disabled = false;
+        $id("uploadButton").value = "Upload";
+      }
 
       function fileSelected() {
         var file = $id('fileToUpload').files[0];
@@ -71,14 +76,17 @@
         if (response.indexOf("Done") == -1)
           progress_empty();
         $id("report").innerHTML = response;
+        enableUploadButtion();
       }
 
       function uploadFailed(evt) {
+        enableUploadButtion();
         // pop-up window
         alert("There was an error attempting to upload the file.");
       }
 
       function uploadCanceled(evt) {
+        enableUploadButtion();
         alert("The upload has been canceled by the user or the browser dropped the connection.");
       }
     </script>
@@ -94,7 +102,8 @@
     </div>
     <div id="fileSize"></div>
     <div class="row">
-      <input type="button" onclick="uploadFile()" value="Upload" />
+      <input type="button" id="uploadButton" value="Upload"
+      onclick="this.disabled=true;this.value='Wait';uploadFile()"/>
     </div>
     <div id="progressNumber"></div>
   </form>
