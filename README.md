@@ -95,4 +95,14 @@ to change pinout.
     [ ] after upload show elapsed time
     [ ] test websvf on ESP8266
     [ ] SPI or DMA (remote control on ESP32) acceleration
+    [x] report IP to usb-serial (works only if passthru image is loaded)
+    [ ] Clicking on "upload" button during already running upload
+        will corrupt the transfer.
+        Use upload-running flag to prevent concurrent uploads.
+    [ ] Timeout (cca 10 minutes) to clear upload-running flag
+        as some help in case of broken connections
+    [ ] report error if out-of-order packet is received
+    [ ] make it work from text client "lynx" currently it just opens
+        empty page with some "HTTP/1.0 200 OK" response.
+        Text client "elinks" works on "minimal.htm" page, though.
 
