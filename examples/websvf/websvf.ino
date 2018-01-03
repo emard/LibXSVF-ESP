@@ -282,7 +282,27 @@ void setup(){
   server.begin();
 }
 
+// Report IP address to serial every 15 seconds.
+// On ULX3S board it works only if USB-serial only
+// if passthru bitstream is loaded.
+// Otherwise try 192.168.4.1, "websvf" hostname
+// or tools like arp, nmap, tcpdump, ...
+void report_ip()
+{
+  const int32_t report_interval = 15000; // ms
+  static int32_t before_ms;
+  int32_t now_ms = millis();
+  int32_t diff_ms = now_ms - before_ms;
+  if(abs(diff_ms) > report_interval)
+  {
+    IPAddress ip = WiFi.localIP();
+    before_ms = now_ms;
+    Serial.println(ip);
+  }
+}
+
 void loop(){
+  // report_ip();
   ArduinoOTA.handle();
 }
 
