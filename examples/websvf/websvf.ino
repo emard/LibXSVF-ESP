@@ -16,9 +16,12 @@
 #include <SPIFFSEditor.h>
 #include <LibXSVF.h>
 
-const char *ssid = "ap_name";
-const char *password = "password";
-const char *hostName = "websvf";
+// At boot it will attempt to connect as client.
+// If this attempt fails, it will become AP.
+// Same ssid/password apply for client and AP.
+const char *ssid = "websvf";
+const char *password = "12345678";
+const char *hostName = "websvf"; // request local name when connected as client
 const char *http_username = "admin";
 const char *http_password = "admin";
 
@@ -247,27 +250,35 @@ void setup(){
     request->send(404);
   });
   server.onFileUpload([](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final){
-    static int packet_counter;
-    static int old_index;
+    static int packet_counter = 0;
+    static int out_of_order = 0;
+    static size_t expect_index = 0;
     static char report[256];
     if(!index)
     {
       Serial.printf("UploadStart: %s\n", filename.c_str());
       packet_counter=0;
-      old_index = index;
+      expect_index = index; // for out-of-order detection
+      out_of_order = 0;
       digitalWrite(LED_BUILTIN, HIGH);
     }
     #if 0
       Serial.printf("%s", (const char*)data);
-      if((packet_counter % 100) == 0 || packet_counter < 4 || final || index-old_index<0)
-        Serial.printf("packet %d len=%d last_len=%d\n", packet_counter, len, index-old_index); // the content
+      if((packet_counter % 100) == 0 || packet_counter < 4 || final != 0)
+        Serial.printf("packet %d len=%d\n", packet_counter, len); // the content
       packet_counter++;
-      old_index=index;
     #endif
-    jtag.play_svf_packet(index, data, len, final, report);
+    if(index != expect_index)
+      out_of_order++;
+    expect_index = index + len;
+    if(out_of_order == 0)
+      jtag.play_svf_packet(index, data, len, final, report);
     if(final)
     {
-      request->send(200, "text/plain", report);
+      if(out_of_order != 0)
+        request->send(200, "text/plain", "received" + String(out_of_order) + " out-of-order packets");
+      else
+        request->send(200, "text/plain", report);
       Serial.printf("UploadEnd: %s (%u)\n", filename.c_str(), index+len);
       digitalWrite(LED_BUILTIN, LOW);
     }
