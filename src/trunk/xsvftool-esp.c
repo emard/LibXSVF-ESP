@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdint.h>
+#include <Arduino.h>
 
 #include "libxsvf.h"
 
@@ -38,8 +39,8 @@
 #define TMS  5 // NodeMCU D1
 #define TDI 13 // NodeMCU D7
 #define TDO 12 // NodeMCU D6
-#define INPUT 0
-#define OUTPUT 1
+//#define INPUT 0
+//#define OUTPUT 1
 #endif
 
 #if ESP32
@@ -47,8 +48,11 @@
 #define TMS 21
 #define TDI 23
 #define TDO 19
-#define INPUT 1
-#define OUTPUT 2
+//#define INPUT 1
+//#define OUTPUT 2
+static volatile uint32_t *outport, *inport; // assume one port contains all out pins
+static uint32_t tckpinmask, tmspinmask, tdipinmask, tdopinmask;
+#define PORT_DIRECT 1
 #endif
 
 /** BEGIN: Low-Level I/O Implementation **/
@@ -59,6 +63,12 @@ static void io_setup(void)
   pinMode(TMS, OUTPUT);
   pinMode(TDI, OUTPUT);
   pinMode(TDO, INPUT);
+  outport = portOutputRegister(digitalPinToPort(TCK));
+  tckpinmask = digitalPinToBitMask(TCK);
+  tmspinmask = digitalPinToBitMask(TMS);
+  tdipinmask = digitalPinToBitMask(TDI);
+  inport = portInputRegister(digitalPinToPort(TDO));
+  tdopinmask = digitalPinToBitMask(TDO);
 }
 
 static void io_shutdown(void)
@@ -71,17 +81,38 @@ static void io_shutdown(void)
 
 static void io_tms(int val)
 {
+  #if PORT_DIRECT
+  if(val)
+    *outport |= tmspinmask;
+  else
+    *outport &= ~tmspinmask;
+  #else
   digitalWrite(TMS, val);
+  #endif
 }
 
 static void io_tdi(int val)
 {
+  #if PORT_DIRECT
+  if(val)
+    *outport |= tdipinmask;
+  else
+    *outport &= ~tdipinmask;
+  #else
   digitalWrite(TDI, val);
+  #endif
 }
 
 static void io_tck(int val)
 {
+  #if PORT_DIRECT
+  if(val)
+    *outport |= tckpinmask;
+  else
+    *outport &= ~tckpinmask;
+  #else
   digitalWrite(TCK, val);
+  #endif
 }
 
 static void io_sck(int val)
@@ -94,7 +125,11 @@ static void io_trst(int val)
 
 static int io_tdo()
 {
+  #if PORT_DIRECT
+  return tdopinmask & *inport ? 1 : 0;
+  #else
   return digitalRead(TDO);
+  #endif
 }
 
 /** END: Low-Level I/O Implementation **/
