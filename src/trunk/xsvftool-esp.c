@@ -79,7 +79,7 @@ static void io_shutdown(void)
   pinMode(TDI, INPUT);
 }
 
-static void io_tms(int val)
+static inline void io_tms(int val)
 {
   #if PORT_DIRECT
   if(val)
@@ -91,7 +91,7 @@ static void io_tms(int val)
   #endif
 }
 
-static void io_tdi(int val)
+static inline void io_tdi(int val)
 {
   #if PORT_DIRECT
   if(val)
@@ -103,7 +103,7 @@ static void io_tdi(int val)
   #endif
 }
 
-static void io_tck(int val)
+static inline void io_tck(int val)
 {
   #if PORT_DIRECT
   if(val)
@@ -115,15 +115,15 @@ static void io_tck(int val)
   #endif
 }
 
-static void io_sck(int val)
+static inline void io_sck(int val)
 {
 }
 
-static void io_trst(int val)
+static inline void io_trst(int val)
 {
 }
 
-static int io_tdo()
+static inline int io_tdo()
 {
   #if PORT_DIRECT
   return tdopinmask & *inport ? 1 : 0;
