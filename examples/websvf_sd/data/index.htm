@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ULX3S Uploader</title>
+    <link rel="stylesheet" type="text/css" media="all" href="styles.css"/>
+
+    <script type="text/javascript">
+      // shorten typing: document.getElementById -> $id
+      function $id(id) {
+        return document.getElementById(id);
+      }
+      
+      function enableUploadButtion() {
+        $id("uploadButton").disabled = false;
+        $id("uploadButton").value = "Upload";
+      }
+
+      function fileSelected() {
+        var file = $id('fileToUpload').files[0];
+        if (file) {
+          var fileSize = 0;
+          if (file.size > 1024 * 1024)
+            fileSize = (Math.round(file.size * 100 / (1024 * 1024)) / 100).toString() + 'MB';
+          else
+            fileSize = (Math.round(file.size * 100 / 1024) / 100).toString() + 'KB';
+
+          // $id('fileName').innerHTML = 'File: ' + file.name;
+          $id('fileSize').innerHTML = 'Size: ' + fileSize;
+          // $id('fileType').innerHTML = 'Type: ' + file.type;
+        }
+      }
+      
+      function progress_empty() {
+        var progress = $id("progress").childNodes[0];
+        progress.style.backgroundPosition = 100 + "% 0";
+        progress.innerHTML = "Error";
+      }
+
+      function uploadFile() {
+        var fd = new FormData();
+        fd.append("fileToUpload", $id('fileToUpload').files[0]);
+        $id("report").innerHTML = "Uploading...";
+        var progress = $id("progress").childNodes[0];
+        var xhr = new XMLHttpRequest();
+        // text only
+        //xhr.upload.addEventListener("progress", uploadProgress, false); //
+        // graphical progress bar
+        xhr.upload.addEventListener("progress", function(e) {
+          // var pc = parseInt(100 - (e.loaded / e.total * 100));
+          var pc = Math.round(e.loaded * 100 / e.total);
+          var bar = Math.round(100 - pc);
+	  progress.style.backgroundPosition = bar + "% 0";
+	  progress.innerHTML = pc + "%";
+	}, false);
+        xhr.addEventListener("load", uploadComplete, false);
+        xhr.addEventListener("error", uploadFailed, false);
+        xhr.addEventListener("abort", uploadCanceled, false);
+        xhr.open($id('form1').method, $id('form1').action);
+        xhr.send(fd);
+      }
+
+      function uploadProgress(evt) {
+        if (evt.lengthComputable) {
+          var percentComplete = Math.round(evt.loaded * 100 / evt.total);
+          $id('progressNumber').innerHTML = percentComplete.toString() + '%';
+        }
+        else {
+          $id('progressNumber').innerHTML = 'unable to compute';
+        }
+      }
+
+      function uploadComplete(evt) {
+        /* This event is raised when the server send back a response */
+        // alert(evt.target.responseText);
+        var response = evt.target.responseText;
+        if (response.indexOf("Done") == -1)
+          progress_empty();
+        $id("report").innerHTML = response;
+        enableUploadButtion();
+      }
+
+      function uploadFailed(evt) {
+        enableUploadButtion();
+        // pop-up window
+        alert("There was an error attempting to upload the file.");
+      }
+
+      function uploadCanceled(evt) {
+        enableUploadButtion();
+        alert("The upload has been canceled by the user or the browser dropped the connection.");
+      }
+    </script>
+</head>
+<body>
+  <form id="form1" enctype="multipart/form-data" method="post" action="index.htm">
+    <div class="row">
+      <label for="fileToUpload">Select SVF File</label>
+      or use <a href="minimal.htm">minimal</a>
+      or <a href="svfupload.py" target="svfupload.py">svfupload.py<a>
+      <br />
+      <input type="file" name="fileToUpload" id="fileToUpload" onchange="fileSelected();"/>
+    </div>
+    <div id="fileSize"></div>
+    <div class="row">
+      <input type="button" id="uploadButton" value="Upload"
+      onclick="this.disabled=true;this.value='Wait';uploadFile()"/>
+    </div>
+    <div id="progressNumber"></div>
+  </form>
+  <div id="progress"><p>0%</p></div>
+  <div id="report"></div>
+</body>
+</html>
