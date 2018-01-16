@@ -94,6 +94,7 @@ File SVF_file; // SVF file opened on SD card during programming
 
 String sd_file_name_svf = "";
 int sd_program_activate = 0;
+int spiffs_program_activate = 0;
 int sd_detach = 0;
 
 // directory read to malloced struct
@@ -358,7 +359,7 @@ void mount_read_directory()
 void file_browser(uint8_t reset)
 {
   scan_keyboard();
-  if(reset || Ifb.hold[BTN_PWR] == 1)
+  if(reset /* || Ifb.hold[BTN_PWR] == 1 */ )
   { // reset directory path
     DirPath = "/";
     mount_read_directory();
@@ -373,9 +374,9 @@ void file_browser(uint8_t reset)
       DirPath = DirPath.substring(0, DirPath.lastIndexOf('/'));
       if(DirPath == "")
         DirPath = "/";
-      mount_read_directory();
-      // Serial.print(DirPath);
     }
+    mount_read_directory();
+      // Serial.print(DirPath);
     return;
   }
   if(Ifb.hold[BTN_RIGHT] == 1 && Ifb.cursor < DirN)
@@ -416,28 +417,28 @@ void file_browser(uint8_t reset)
     }
     else
     {
-       // scroll
-       // screen_line = screen_line < 0 ? 0 : LineN-1; // snap screen line
-       if(screen_line < 0)
-       {
-         // cursor going up
-         screen_line = 0;
-         if(Ifb.topitem > 0)
-         {
-           Ifb.topitem--;
-           show_directory(Ifb.cursor, Ifb.topitem);
-         }
-       }
-       else
-       {
-         // cursor going down
-         screen_line = LineN-1;
-         if(Ifb.topitem < DirN-1)
-         {
-           Ifb.topitem++;
-           show_directory(Ifb.cursor, Ifb.topitem);
-         }
-       }
+      // scroll
+      // screen_line = screen_line < 0 ? 0 : LineN-1; // snap screen line
+      if(screen_line < 0)
+      {
+        // cursor going up
+        screen_line = 0;
+        if(Ifb.topitem > 0)
+        {
+          Ifb.topitem--;
+          show_directory(Ifb.cursor, Ifb.topitem);
+        }
+      }
+      else
+      {
+        // cursor going down
+        screen_line = LineN-1;
+        if(Ifb.topitem < DirN-1)
+        {
+          Ifb.topitem++;
+          show_directory(Ifb.cursor, Ifb.topitem);
+        }
+      }
     }
   }
 }
@@ -446,13 +447,11 @@ void file_browser(uint8_t reset)
 // From SD to JTAG
 // Read file by blocks, passing each to
 // packetized SVF player
-void program_file(fs::FS &storage, String filename)
+void program_file(fs::FS &storage, String filename, int detach)
 {
   tft.clearScreen();
   tft.setTextColor(WHITE, BLACK);
   tft.setTextWrap(true);
-  if(sd_mount() < 0)
-    return;
   tft.println(filename);
   SVF_file = storage.open(filename);
   // progress bar geometry
@@ -493,11 +492,25 @@ void program_file(fs::FS &storage, String filename)
        tft.println("ok");
   }
   SVF_file.close();
-  sd_unmount();
   tft.println(report);
   digitalWrite(LED_WIFI, LOW);
-  // after bitstream, OLED may be reset,
-  // so reinitialize
+  // is SPI detach required?
+  if(detach)
+  {
+    SPI.end();
+    pinMode(__CS_SD, INPUT);
+    pinMode(__CS_TFT, INPUT);
+    pinMode(__DC_TFT, INPUT);
+    pinMode(__RES_TFT, INPUT);
+    pinMode(__MOSI_TFT, INPUT);
+    pinMode(__MISO_TFT, INPUT);
+    pinMode(__SCL_TFT, INPUT);
+    sd_detach = 1;
+    return; // after detach, OLED will be inaccessible
+  }
+  // after bitstream, if passthru still works
+  // OLED may need to be reset, so reinitialize
+  // and print final message
   delay(500);
   tft.begin();
   tft.setRotation(2);
@@ -508,15 +521,7 @@ void program_file(fs::FS &storage, String filename)
   tft.setTextColor(WHITE);
   tft.setTextScale(1);
   tft.println(report);
-  SPI.end();
-  pinMode(__CS_SD, INPUT);
-  pinMode(__CS_TFT, INPUT);
-  pinMode(__DC_TFT, INPUT);
-  pinMode(__RES_TFT, INPUT);
-  pinMode(__MOSI_TFT, INPUT);
-  pinMode(__MISO_TFT, INPUT);
-  pinMode(__SCL_TFT, INPUT);
-  sd_detach = 1;
+  sd_detach = 0;
 }
 
 // command response to user typing
@@ -525,6 +530,11 @@ String CommandLine(String user)
   char jtag_id[100];
   jtag.scan();
   sprintf(jtag_id, "0x%08X", jtag.id());
+  if(user == "p")
+  {
+    spiffs_program_activate = 1; // fixed filename
+  }
+  else
   if(user.length() > 4)
   {
     sd_program_activate = 1;
@@ -642,6 +652,7 @@ void listDir(fs::FS &fs, const char * dirname, uint8_t levels){
 #endif
 void setup(){
   pinMode(LED_WIFI, OUTPUT);
+  pinMode(0, INPUT_PULLUP); // holding GPIO0 LOW will signal ESP32 to load "passthru.svf" from SPIFFS to JTAG
   Serial.begin(115200);
   Serial.setDebugOutput(true);
 
@@ -851,17 +862,26 @@ void report_ip()
 
 void loop()
 {
-  if(sd_program_activate)
+  if(sd_program_activate > 0)
   {
     if(sd_mount() >= 0)
     {
-      program_file(SD, sd_file_name_svf);
-      sd_unmount();
+      program_file(SD, sd_file_name_svf, 1);
+      sd_unmount(); // ?? if we unmount after SPI detach hope it won't reattach
     }
     sd_program_activate = 0;
   }
   else
-    report_ip();
+  {
+    if(spiffs_program_activate > 0 || digitalRead(0) == LOW)
+    {
+      program_file(SPIFFS, "/passthru.svf", 0);
+      spiffs_program_activate = 0;
+      mount_read_directory();
+    }
+    else
+      report_ip();
+  }
   ArduinoOTA.handle();
 }
 
