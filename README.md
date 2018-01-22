@@ -25,15 +25,27 @@ Close arduino
     git clone https://github.com/emard/LibXSVF
 
 Some additional dependencies are need, this list may not 
-be complete or some apply for ESP32 or ESP8266, so if
-you see error, find some solution....
+be complete or some apply for ESP32 or ESP8266. Here are
+git checkouts known to work on ESP32. espressif/arduino-esp32
+from 2018 doesn't work in this combination - ESPAsyncWebServer
+itself works but it doesn't open any pages stored in SPIFFS.
 
-    AsyncTCP
+    *** ESP32 ***
+    arduino-esp32 Tue Dec 19 11:07:22 2017 -0200
+      https://github.com/espressif/arduino-esp32
+      git checkout 70d0d4648766cea047613062ed50a9ecfc9de31f
+    AsyncTCP Sat Nov 25 23:51:36 2017 +0100
+      https://github.com/me-no-dev/AsyncTCP
+      git checkout 4dbbf1060923fd3940c6478bc2ac887ec389397f
+    ESPAsyncWebServer Sun Nov 26 02:24:07 2017 +0200
+      https://github.com/me-no-dev/ESPAsyncWebServer
+      git checkout 232b87aeb12dd212af21b62a9f68e5e2c89a3a9c
+
+    *** ESP8266 ***
     ESPAsyncTCP
-    ESPAsyncWebServer (ESP32)
-    FSBrowserNG (ESP8266)
-    NtpClient (ESP8266)
-    Time (ESP8266)
+    FSBrowserNG
+    NtpClient
+    Time
 
 Start arduino, open examples->LibXSVF
 
