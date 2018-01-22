@@ -24,11 +24,11 @@ Close arduino
     cd ~/Arduino/libraries
     git clone https://github.com/emard/LibXSVF
 
-Some additional dependencies are need, this list may not 
+Some additional dependencies are required, this list may not 
 be complete or some apply for ESP32 or ESP8266. Here are
 git checkouts known to work on ESP32. espressif/arduino-esp32
 from 2018 doesn't work in this combination - ESPAsyncWebServer
-itself works but it doesn't open any pages stored in SPIFFS.
+itself works but can't open any pages stored in SPIFFS.
 
     *** ESP32 ***
     arduino-esp32 Tue Dec 19 11:07:22 2017 -0200
