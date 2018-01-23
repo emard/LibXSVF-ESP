@@ -40,6 +40,9 @@ itself works but can't open any pages stored in SPIFFS.
     ESPAsyncWebServer Sun Nov 26 02:24:07 2017 +0200
       https://github.com/me-no-dev/ESPAsyncWebServer
       git checkout 232b87aeb12dd212af21b62a9f68e5e2c89a3a9c
+    ArduinoJson Fri Jan 19 15:35:19 2018 +0100
+      https://github.com/bblanchon/ArduinoJson
+      git checkout cf5396aaed6d16d1fb4e73b82ce6606938591043
 
     *** ESP8266 ***
     ESPAsyncTCP
