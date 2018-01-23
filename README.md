@@ -80,6 +80,33 @@ Lattice example that limits to 8 kbit (works up to 128):
 
     ddtcmd  -oft -svfsingle -revd -maxdata 8 -if bitstream.xcf -of bitstream.svf
 
+# Connect to WiFi
+
+On power up it will shortly try to connect to the access point
+with default ssid/password:
+
+    ssid: websvf
+    pass: 12345678
+
+If it can't connect as wifi client, it will become wifi access point
+with same ssid and passowrd, IP address of server will be 192.168.4.1 
+and it will give UP addresses to clients like 192.168.4.2, 3, etc...
+
+To change wifi settings, insert SD card with
+file "ulx3s-wifi.conf" in SD root directory:
+
+    {
+       "host_name": "ulx3s",
+       "ssid": "ulx3s",
+       "password": "testpass",
+       "http_username": "user",
+       "http_password": "pass"
+    }
+
+Max file length 2047 bytes and json syntax.
+For "host_name" and "ssid" it's 
+recommended to use the same value.
+
 # JTAG PINOUT
 
 It's currently "hidden" in xsvftool-esp8266.c
