@@ -56,15 +56,16 @@ SSD_13XX tft = SSD_13XX(__CS_TFT, __DC_TFT);
 #include <ESPAsyncWebServer.h>
 #include <SPIFFSEditor.h>
 #include <LibXSVF.h>
+#include <ArduinoJson.h>
 
 // At boot it will attempt to connect as client.
 // If this attempt fails, it will become AP.
 // Same ssid/password apply for client and AP.
-const char *ssid = "websvf";
-const char *password = "12345678";
-const char *hostName = "websvf"; // request local name when connected as client
-const char *http_username = "admin";
-const char *http_password = "admin";
+char ssid[32] = "websvf";
+char password[32] = "12345678";
+char host_name[32] = "websvf"; // request local name when connected as client
+char http_username[32] = "admin";
+char http_password[32] = "admin";
 
 // verbose print on serial
 #define DEBUG 0
@@ -142,6 +143,62 @@ int sd_mount()
 void sd_unmount()
 {
   SD.end();
+}
+
+// read wifi and password config from
+// SD card file "/ulx3s-wifi.conf"
+// this file max 2K
+#define MAX_CONF_LEN 2048
+void read_config(fs::FS &storage)
+{
+  File conf_file = storage.open("/ulx3s-wifi.conf");
+  if(!conf_file)
+  {
+    Serial.println("no config file /ulx3s-wifi.conf");
+    return; // no config file
+  }
+  uint8_t data[MAX_CONF_LEN];
+  if(conf_file.available())
+  {
+     int len = conf_file.read(data, MAX_CONF_LEN);
+     static StaticJsonBuffer<MAX_CONF_LEN> jsonBuffer;
+     static JsonObject& jroot = jsonBuffer.parseObject(data);
+     // Test if parsing succeeds.
+     if (jroot.success())
+     {
+       #if 1
+       const char *a;
+       a = jroot["ssid"];
+       if(a)
+         strncpy(ssid, a, 31);
+       a = jroot["password"];
+       if(a)
+         strncpy(password, a, 31);
+       a = jroot["host_name"];
+       if(a)
+         strncpy(host_name, a, 31);
+       a = jroot["http_username"];
+       if(a)
+         strncpy(http_username, a, 31);
+       a = jroot["http_password"];
+       if(a)
+         strncpy(http_password, a, 31);
+       #endif
+       #if 0
+       Serial.println(ssid);
+       Serial.println(password);
+       Serial.println(host_name);
+       Serial.println(http_username);
+       Serial.println(http_password);
+       #endif
+     }
+     else
+     {
+       Serial.println("wifi.conf parseObject() failed");
+     }
+  }
+
+  conf_file.close();
 }
 
 // read current directory path, don't recurse child dirs
@@ -666,12 +723,16 @@ void setup(){
   tft.setTextScale(1);
   tft.setTextWrap(false);
   tft.println("Connecting to WiFi");
+  sd_mount();
+  read_config(SD);
+  read_directory(SD);
+  sd_unmount();
 
   #if ESP8266
-  WiFi.hostname(hostName);
+  WiFi.hostname(host_name);
   #endif
   WiFi.mode(WIFI_AP_STA);
-  WiFi.softAP(hostName);
+  WiFi.softAP(host_name);
   WiFi.begin(ssid, password);
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.printf("STA: Failed!\n");
@@ -679,26 +740,17 @@ void setup(){
     delay(1000);
     WiFi.begin(ssid, password);
   }
+       Serial.println(ssid);
+       Serial.println(password);
+       Serial.println(host_name);
+       Serial.println(http_username);
+       Serial.println(http_password);
+
   IPAddress ip = WiFi.localIP();
   tft.clearScreen();
   tft.setCursor(0, 0);
   tft.println(ip);
 
-#if 0
-  tft.println("Initializing SD card...");
-  if(!SD.begin(13, SPI, 20000000, "/sd")){
-        Serial.println("Card Mount Failed");
-        tft.println("Card Mount Failed");
-        // return;
-  }
-  uint8_t cardType = SD.cardType();
-  if(cardType == CARD_NONE){
-        Serial.println("No SD card attached");
-        tft.println("No SD card attached");
-        // return;
-  }
-#endif
-  read_directory(SD);
   // Serial.println("done!");
   // file_browser(1); // reset
   //Send OTA events to the browser
@@ -716,7 +768,7 @@ void setup(){
     else if(error == OTA_RECEIVE_ERROR) events.send("Recieve Failed", "ota");
     else if(error == OTA_END_ERROR) events.send("End Failed", "ota");
   });
-  ArduinoOTA.setHostname(hostName);
+  ArduinoOTA.setHostname(host_name);
   ArduinoOTA.begin();
 
   MDNS.addService("http","tcp",80);
