@@ -43,6 +43,9 @@ itself works but can't open any pages stored in SPIFFS.
     ArduinoJson Fri Jan 19 15:35:19 2018 +0100
       https://github.com/bblanchon/ArduinoJson
       git checkout cf5396aaed6d16d1fb4e73b82ce6606938591043
+    arduino-esp32fs-plugin 
+    https://github.com/me-no-dev/arduino-esp32fs-plugin
+      release ESP32FS-v0.1.zip
 
     *** ESP8266 ***
     ESPAsyncTCP
