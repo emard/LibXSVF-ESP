@@ -35,6 +35,7 @@
 #include <SSD_13XX.h>
 // pcb v1.7
 #if 0
+#define __CS_SD        26
 #define __CS_TFT       15
 #define __DC_TFT       16
 #define __RES_TFT      25
@@ -43,6 +44,7 @@
 #define __SCL_TFT      14
 #endif
 // pcb v1.8
+#if 1
 #define __CS_SD        13
 #define __CS_TFT       17
 #define __DC_TFT       16
@@ -50,6 +52,7 @@
 #define __MOSI_TFT     15
 #define __MISO_TFT      2
 #define __SCL_TFT      14
+#endif
 SSD_13XX tft = SSD_13XX(__CS_TFT, __DC_TFT);
 #endif
 #include <ArduinoOTA.h>
