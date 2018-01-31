@@ -899,10 +899,11 @@ void setup(){
 // if passthru bitstream is loaded.
 // Otherwise try 192.168.4.1, "websvf" hostname
 // or tools like arp, nmap, tcpdump, ...
-void report_ip()
+void periodic()
 {
   const int32_t report_interval = 100; // ms
   static int32_t before_ms;
+  static uint32_t btn0_hold_counter = 0; // must hold btn0 1 second to take effect
   int32_t now_ms = millis();
   int32_t diff_ms = now_ms - before_ms;
   if(abs(diff_ms) > report_interval)
@@ -912,6 +913,15 @@ void report_ip()
     // Serial.println(ip);
     if(sd_detach == 0)
       file_browser(0);
+    if(digitalRead(0) == LOW)
+    { // btn0 pressed
+      if(++btn0_hold_counter == 20) // hold button 2 seconds to take control over FPGA
+        spiffs_program_activate = 1;
+    }
+    else
+    { // btn0 released
+       btn0_hold_counter = 0;
+    }
   }
 }
 
@@ -928,14 +938,14 @@ void loop()
   }
   else
   {
-    if(spiffs_program_activate > 0 || digitalRead(0) == LOW)
+    if(spiffs_program_activate > 0)
     {
       program_file(SPIFFS, "/passthru.svf", 0);
       spiffs_program_activate = 0;
       mount_read_directory();
     }
     else
-      report_ip();
+      periodic();
   }
   ArduinoOTA.handle();
 }
