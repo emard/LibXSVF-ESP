@@ -99,7 +99,7 @@ File SVF_file; // SVF file opened on SD card during programming
 String sd_file_name_svf = "";
 int sd_program_activate = 0;
 int spiffs_program_activate = 0;
-int sd_detach = 0;
+int sd_detach = 1; // start with SPI bus detached (SD and OLED initially not in use)
 
 // directory read to malloced struct
 String DirPath = "/"; // current directory path
@@ -509,29 +509,39 @@ void file_browser(uint8_t reset)
 // packetized SVF player
 void program_file(fs::FS &storage, String filename, int detach)
 {
-  tft.clearScreen();
-  tft.setTextColor(WHITE, BLACK);
-  tft.setTextWrap(true);
-  tft.println(filename);
   SVF_file = storage.open(filename);
   // progress bar geometry
   const int pb_x = 0, pb_y = 40, pb_w = 95, pb_h = 8;
   const int pb_color_frame = WHITE, pb_color_empty = BLACK, pb_color_full = BLUE;
   static char report[256];
+  if(sd_detach == 0)
+  {
+    tft.clearScreen();
+    tft.setTextColor(WHITE, BLACK);
+    tft.setTextWrap(true);
+    tft.println(filename);
+  }
   if (!SVF_file)
   {
-     tft.println("cannot open");
+     if(sd_detach == 0)
+       tft.println("cannot open");
      return;
   }
   int file_len = SVF_file.size();
-  tft.print("length ");
-  tft.println(file_len, DEC);
+  if(sd_detach == 0)
+  {
+    tft.print("length ");
+    tft.println(file_len, DEC);
+  }
   if(file_len <= 0)
     return;
   int index = 0;
   digitalWrite(LED_WIFI, HIGH);
-  tft.print("SVF");
-  tft.drawRect(pb_x,pb_y,pb_w,pb_h,pb_color_frame,pb_color_empty,true);
+  if(sd_detach == 0)
+  {
+    tft.print("SVF");
+    tft.drawRect(pb_x,pb_y,pb_w,pb_h,pb_color_frame,pb_color_empty,true);
+  }
   int pb_w_full = pb_w-2; // full progress bar width
   int pb_w_anim; // progress width during animated progess
   const int buflen = 512;
@@ -543,20 +553,25 @@ void program_file(fs::FS &storage, String filename, int detach)
      jtag.play_svf_packet(index, data, len, final, report);
      index += len;
      pb_w_anim = pb_w_full * index / file_len;
-     if( (index & 0xFFF) == 0 || final != 0)
-       if(pb_w_anim > 0 && pb_w_anim <= pb_w_full)
-         tft.fillRect(pb_x+1,pb_y+1,pb_w_anim,pb_h-2,pb_color_full);
-     if( (index & 0xFFFF) == 0)
-       tft.print(".");
-     if(final)
-       tft.println("ok");
+     if(sd_detach == 0)
+     {
+       if( (index & 0xFFF) == 0 || final != 0)
+         if(pb_w_anim > 0 && pb_w_anim <= pb_w_full)
+           tft.fillRect(pb_x+1,pb_y+1,pb_w_anim,pb_h-2,pb_color_full);
+       if( (index & 0xFFFF) == 0)
+         tft.print(".");
+       if(final)
+         tft.println("ok");
+     }
   }
   SVF_file.close();
-  tft.println(report);
+  if(sd_detach == 0)
+    tft.println(report);
   digitalWrite(LED_WIFI, LOW);
   // is SPI detach required?
   if(detach)
   {
+    sd_unmount();
     SPI.end();
     pinMode(__CS_SD, INPUT);
     pinMode(__CS_TFT, INPUT);
@@ -571,18 +586,22 @@ void program_file(fs::FS &storage, String filename, int detach)
   // after bitstream, if passthru still works
   // OLED may need to be reset, so reinitialize
   // and print final message
-  delay(500);
-  tft.begin();
-  tft.setRotation(2);
-  tft.defineScrollArea(0,0,0, 63, 0);
-  tft.scroll(false);
-  tft.clearScreen();
-  tft.setCursor(0, 0);
-  tft.setTextColor(WHITE);
-  tft.setTextScale(1);
-  tft.println(report);
-  sd_detach = 0;
+  if(sd_detach == 0)
+  {
+    delay(500);
+    tft.begin();
+    tft.setRotation(2);
+    tft.defineScrollArea(0,0,0, 63, 0);
+    tft.scroll(false);
+    tft.clearScreen();
+    tft.setCursor(0, 0);
+    tft.setTextColor(WHITE);
+    tft.setTextScale(1);
+    tft.println(report);
+  }
+  // sd_detach = 0;
 }
+
 
 // command response to user typing
 String CommandLine(String user)
@@ -678,58 +697,13 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
   }
   digitalWrite(LED_WIFI, LOW);
 }
-#if 0
-void listDir(fs::FS &fs, const char * dirname, uint8_t levels){
-    Serial.printf("Listing directory: %s\n", dirname);
 
-    File root = fs.open(dirname);
-    if(!root){
-        Serial.println("Failed to open directory");
-        return;
-    }
-    if(!root.isDirectory()){
-        Serial.println("Not a directory");
-        return;
-    }
 
-    File file = root.openNextFile();
-    while(file){
-        if(file.isDirectory()){
-            Serial.print("  DIR : ");
-            Serial.println(file.name());
-            if(levels){
-                listDir(fs, file.name(), levels -1);
-            }
-        } else {
-            Serial.print("  FILE: ");
-            Serial.print(file.name());
-            Serial.print("  SIZE: ");
-            Serial.println(file.size());
-        }
-        file = root.openNextFile();
-    }
-}
-#endif
 void setup(){
   pinMode(LED_WIFI, OUTPUT);
   pinMode(0, INPUT_PULLUP); // holding GPIO0 LOW will signal ESP32 to load "passthru.svf" from SPIFFS to JTAG
   Serial.begin(115200);
   Serial.setDebugOutput(true);
-
-  tft.begin();
-  tft.setRotation(2);
-  tft.defineScrollArea(0,0,0, 63, 0);
-  tft.scroll(false);
-  tft.clearScreen();
-  tft.setCursor(0, 0);
-  tft.setTextColor(WHITE);
-  tft.setTextScale(1);
-  tft.setTextWrap(false);
-  tft.println("Connecting to WiFi");
-  sd_mount();
-  read_config(SD);
-  read_directory(SD);
-  sd_unmount();
 
   #if ESP8266
   WiFi.hostname(host_name);
@@ -748,11 +722,6 @@ void setup(){
        Serial.println(host_name);
        Serial.println(http_username);
        Serial.println(http_password);
-
-  IPAddress ip = WiFi.localIP();
-  tft.clearScreen();
-  tft.setCursor(0, 0);
-  tft.println(ip);
 
   // Serial.println("done!");
   // file_browser(1); // reset
@@ -894,6 +863,22 @@ void setup(){
   server.begin();
 }
 
+void init_oled_show_ip()
+{
+  tft.begin();
+  tft.setRotation(2);
+  tft.defineScrollArea(0,0,0, 63, 0);
+  tft.scroll(false);
+  tft.clearScreen();
+  tft.setCursor(0, 0);
+  tft.setTextColor(WHITE);
+  tft.setTextScale(1);
+  tft.setTextWrap(false);
+  IPAddress ip = WiFi.localIP();
+  tft.println(ip);
+}
+
+
 // Report IP address to serial every 15 seconds.
 // On ULX3S board it works only if USB-serial only
 // if passthru bitstream is loaded.
@@ -915,8 +900,14 @@ void periodic()
       file_browser(0);
     if(digitalRead(0) == LOW)
     { // btn0 pressed
-      if(++btn0_hold_counter == 20) // hold button 2 seconds to take control over FPGA
+      if(btn0_hold_counter == 5) // short hold, enable OLED and SD access
+      {
+        sd_detach = 0; // allow SD and OLED access
+        init_oled_show_ip();
+      }
+      if(btn0_hold_counter == 20) // hold button 2 seconds to take control over FPGA
         spiffs_program_activate = 1;
+      btn0_hold_counter++;
     }
     else
     { // btn0 released
