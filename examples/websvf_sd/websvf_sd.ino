@@ -214,6 +214,7 @@ void read_directory(fs::FS &storage)
 {
   // counters
   int ndirs = 0, nfiles = 0, all_names_length = 0;
+  DirN = 0; // let dir be read empty initially
   // pass1: read to determine number of entries and sum all string lengths
   File root = storage.open(DirPath);
   if(!root)
@@ -814,6 +815,29 @@ void setup(){
     request->send(200, "text/plain", String(ESP.getFreeHeap()));
   });
 
+  #if 1
+  server.on("/dir", HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+    AsyncResponseStream *response = request->beginResponseStream("text/json");
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject &root = jsonBuffer.createObject();
+    if(request->hasParam("path"))
+    {
+      AsyncWebParameter* p = request->getParam("path");
+      if(p)
+        if(p->value())
+          DirPath=p->value();
+    }
+    root["path"]=DirPath;
+    init_oled_show_ip();
+    mount_read_directory();
+    for(int i = 0; i < DirN; i++)
+      root[String(i)+(DirEntries[i].type ? "d" : "f")] = DirEntries[i].name;
+    root.printTo(*response);
+    request->send(response);
+  });
+  #endif
+
   // http://192.168.4.1/delete?file=/path/to/junk.file
   server.on("/delete", HTTP_GET, [](AsyncWebServerRequest *request){
     String message = "usage: http://192.168.4.1/delete?file=/path/to/junk.file";
@@ -893,7 +917,6 @@ void setup(){
         Serial.printf("_GET[%s]: %s\n", p->name().c_str(), p->value().c_str());
       }
     }
-
     request->send(404);
   });
   server.onFileUpload([](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final){
