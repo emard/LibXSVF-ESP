@@ -96,10 +96,12 @@ LibXSVF jtag = LibXSVF();
 
 File SVF_file; // SVF file opened on SD card during programming
 
+String save_dirname = "/"; // where to save file uploaded file
 String sd_file_name_svf = "";
 int sd_program_activate = 0;
 int spiffs_program_activate = 0;
 int sd_detach = 1; // start with SPI bus detached (SD and OLED initially not in use)
+int sd_delete_file_activate = 0; // any filename, passed to sd_file_name_svf
 
 // directory read to malloced struct
 String DirPath = "/"; // current directory path
@@ -400,6 +402,21 @@ void scan_keyboard()
   }
 }
 
+void init_oled_show_ip()
+{
+  tft.begin();
+  tft.setRotation(2);
+  tft.defineScrollArea(0,0,0, 63, 0);
+  tft.scroll(false);
+  tft.clearScreen();
+  tft.setCursor(0, 0);
+  tft.setTextColor(WHITE);
+  tft.setTextScale(1);
+  tft.setTextWrap(false);
+  IPAddress ip = WiFi.localIP();
+  tft.println(ip);
+}
+
 void mount_read_directory()
 {
     if(sd_mount() >= 0)
@@ -698,6 +715,32 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
   digitalWrite(LED_WIFI, LOW);
 }
 
+int sd_delete(String filename)
+{
+  int deleted = 0;
+  // sd_detach = 0;
+  if(sd_mount() >= 0)
+  {
+    if(SD.remove(filename))
+    {
+      read_directory(SD);
+      sd_unmount();
+      Ifb.cursor = 0;
+      Ifb.topitem = 0;
+      init_oled_show_ip();
+      // OLED must be initialized before show_directory
+      show_directory(Ifb.cursor, Ifb.topitem);
+      deleted = 1;
+    }
+    else
+    {
+      sd_unmount();
+      deleted = 0;
+    }
+  }
+  return deleted;
+}
+
 
 void setup(){
   pinMode(LED_WIFI, OUTPUT);
@@ -771,6 +814,40 @@ void setup(){
     request->send(200, "text/plain", String(ESP.getFreeHeap()));
   });
 
+  // http://192.168.4.1/delete?file=/path/to/junk.file
+  server.on("/delete", HTTP_GET, [](AsyncWebServerRequest *request){
+    String message = "usage: http://192.168.4.1/delete?file=/path/to/junk.file";
+    int params = request->params();
+    for(int i=0;i<params;i++)
+    {
+      AsyncWebParameter* p = request->getParam(i);
+      if(p)
+      if(p->name())
+      if(p->name() == "file")
+      {
+          if(p->value())
+          {
+            sd_file_name_svf = p->value();
+            sd_delete_file_activate = 1;
+            message = "requested to delete file " + sd_file_name_svf;
+          }
+      }
+    }
+#if 0
+    AsyncWebParameter *p = request->getParam("file");
+    if(p)
+    {
+      sd_file_name_svf = p->value();
+      if(sd_file_name_svf != "")
+      {
+        sd_delete_file_activate = 1;
+        message = "requested to delete file " + sd_file_name_svf;
+      }
+    }
+#endif
+    request->send(200, "text/plain", message);
+  });
+
   server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.htm");
 
   server.onNotFound([](AsyncWebServerRequest *request){
@@ -824,13 +901,65 @@ void setup(){
     static int out_of_order = 0;
     static size_t expect_index = 0;
     static char report[256];
+    static File save_file;
     if(!index)
     {
       Serial.printf("UploadStart: %s\n", filename.c_str());
       packet_counter=0;
       expect_index = index; // for out-of-order detection
       out_of_order = 0;
+      report[0] = '\0';
       digitalWrite(LED_WIFI, HIGH);
+#if 1
+      int params = request->params();
+      // Serial.printf("request params %d\n", params);
+      String save_file_name = "";
+      for(int i=0;i<params;i++)
+      {
+        AsyncWebParameter* p = request->getParam(i);
+        if(p->isFile()){
+          //Serial.printf("_FILE[%s]: %s, size: %u\n", p->name().c_str(), p->value().c_str(), p->size());
+        } else if(p->isPost()){
+          //Serial.printf("_POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
+        } else {
+          //Serial.printf("_GET[%s]: %s\n", p->name().c_str(), p->value().c_str());
+          if(p->name() == "save")
+          {
+            if(p->value())
+            {
+              Serial.printf("save %s to directory %s\n", filename, p->value().c_str());
+              save_dirname = p->value();
+              if(!save_dirname.startsWith("/"))
+                save_dirname = "/"+save_dirname;
+              if(!save_dirname.endsWith("/"))
+                save_dirname = save_dirname+"/";
+              save_file_name = save_dirname+filename;
+              // we want later to cd to this directory
+              // if not root, we must cut off trailing "/"
+              if(save_dirname != "/")
+                while(save_dirname.endsWith("/"))
+                  save_dirname = save_dirname.substring(0,save_dirname.length()-1);
+            }
+          }
+        }
+      }
+      if(save_file_name != "" && save_file_name != "/")
+      {
+        if(sd_mount() >= 0)
+        {
+          save_file = SD.open(save_file_name.c_str(), FILE_WRITE);
+          if(save_file)
+            Serial.printf("file writing to %s starts\n", save_file_name.c_str());
+          else
+          {
+            Serial.printf("file writing to: %s failed\n", save_file_name.c_str());
+            sd_unmount();
+          }
+        }
+        else
+          Serial.printf("SD card mount failed\n");
+      }
+#endif
     }
     #if 0
       Serial.printf("%s", (const char*)data);
@@ -842,13 +971,27 @@ void setup(){
       out_of_order++;
     expect_index = index + len;
     if(out_of_order == 0)
-      jtag.play_svf_packet(index, data, len, final, report);
+    {
+      if(save_file)
+        save_file.write(data, len);
+      else
+        jtag.play_svf_packet(index, data, len, final, report);
+    }
     if(final)
     {
       if(out_of_order != 0)
         request->send(200, "text/plain", "received" + String(out_of_order) + " out-of-order packets");
       else
         request->send(200, "text/plain", report);
+      if(save_file)
+      {
+        save_file.close();
+        sd_unmount();
+        init_oled_show_ip();
+        // cd to the uploaded file's directory
+        DirPath=save_dirname; // doesn't work like expected
+        mount_read_directory();
+      }
       Serial.printf("UploadEnd: %s (%u)\n", filename.c_str(), index+len);
       digitalWrite(LED_WIFI, LOW);
     }
@@ -861,21 +1004,6 @@ void setup(){
       Serial.printf("BodyEnd: %u\n", total);
   });
   server.begin();
-}
-
-void init_oled_show_ip()
-{
-  tft.begin();
-  tft.setRotation(2);
-  tft.defineScrollArea(0,0,0, 63, 0);
-  tft.scroll(false);
-  tft.clearScreen();
-  tft.setCursor(0, 0);
-  tft.setTextColor(WHITE);
-  tft.setTextScale(1);
-  tft.setTextWrap(false);
-  IPAddress ip = WiFi.localIP();
-  tft.println(ip);
 }
 
 
@@ -936,7 +1064,13 @@ void loop()
       mount_read_directory();
     }
     else
-      periodic();
+      if(sd_delete_file_activate > 0)
+      {
+        sd_delete_file_activate = 0;
+        sd_delete(sd_file_name_svf);
+      }
+      else
+        periodic();
   }
   ArduinoOTA.handle();
 }
