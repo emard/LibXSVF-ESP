@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8"> 
+    <title>ULX3S SD directory</title>
+    <link rel="stylesheet" type="text/css" media="all" href="styles.css"/>
+    <script type="text/javascript">
+      // shorten typing: document.getElementById -> $id
+      function $id(id) {
+        return document.getElementById(id);
+      }
+
+      function load(e, t, n) {
+            if ("js" == t) {
+                var a = document.createElement("script");
+                a.src = e,
+                a.type = "text/javascript",
+                a.async = !1,
+                a.onload = function () { n() },
+                document.getElementsByTagName("head")[0].appendChild(a)
+            } else if ("css" == t) {
+                var a = document.createElement("link");
+                a.href = e,
+                a.rel = "stylesheet",
+                a.type = "text/css",
+                a.async = !1,
+                a.onload = function () { n() },
+                document.getElementsByTagName("head")[0].appendChild(a)
+            }
+      }
+      
+      function path_for_new_folder(path)
+      {
+        var newfolder = document.getElementById("new_folder");
+        newfolder.value = path;
+      }
+
+function RemoveLastDirectoryPartOf(the_url)
+{
+    var the_arr = the_url.split('/');
+    the_arr.pop();
+    return( the_arr.join('/') );
+}
+
+            function append_row(name, file_type, current_path) {
+              var full_path = "";
+              if(name=="/") {
+                full_path = "/";
+              } else if (name==".") {
+                full_path = current_path;
+              } else if (name=="..") {
+                full_path = RemoveLastDirectoryPartOf(current_path);
+              } else {
+              if(current_path=="/")
+                full_path = "/"+name;
+              else
+                full_path = current_path+"/"+name;
+              }
+              var base_href = "/dir.htm?path="+full_path;
+              var table = document.getElementById("directory_table");
+              var tr = document.createElement("tr");
+              var td1 = document.createElement("td");
+              if(file_type == "file")
+                var txt1 = document.createTextNode(name);
+              else {
+                var txt1 = document.createElement('a');
+                var linkText = document.createTextNode(name);
+                txt1.appendChild(linkText);
+                // txt1.title = "subdir"; // shows oh mouse hover
+                txt1.href = base_href;
+              }
+              var td2 = document.createElement("td");
+              // now create delete link "x"
+              //var txt2 = document.createTextNode('a');
+              var txt2 = document.createElement('a');
+              var deleteText = document.createTextNode("x");
+              txt2.appendChild(deleteText);
+              txt2.title = "DELETE"; // shows oh mouse hover
+              if(file_type == "file")
+                txt2.href = "rm?path="+full_path;
+              else
+                txt2.href = "rmdir?path="+full_path;
+              td1.appendChild(txt1);
+              tr.appendChild(td1);
+              if(name != "/" && name != "." && name != "..") {
+                td2.appendChild(txt2);
+                tr.appendChild(td2);
+              }
+              table.appendChild(tr);
+            }
+
+            function clear_table() {
+              var elmtTable = document.getElementById('directory_table');
+              var tableRows = elmtTable.getElementsByTagName('tr');
+              var rowCount = tableRows.length;
+              for (var x=rowCount-1; x>0; x--) {
+                elmtTable.removeChild(tableRows[x]);
+              }
+            }
+
+      function getParameterByName(name, url) {
+        if (!url) url = window.location.href;
+        name = name.replace(/[\[\]]/g, "\\$&");
+        var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+          results = regex.exec(url);
+        if (!results) return null;
+        if (!results[2]) return '';
+        return decodeURIComponent(results[2].replace(/\+/g, " "));
+      }
+
+      function directory_listing(url) // url parameter unused
+      {
+        var current_path = getParameterByName("path");
+        if(!current_path)
+          current_path="/";
+        if(current_path=="")
+          current_path="/";
+
+        /*
+        var delete_request = getParameterByName("delete");
+        if(delete_request) {
+          var delete_url="/rm?path="+delete_request;
+          microAjax(delete_url, function (res) { // lambda function empty
+          });
+        }
+        delete_request = getParameterByName("rmdir");
+        if(delete_request) {
+          var delete_url="/rmdir?path="+delete_request;
+          microAjax(delete_url, function (res) { // lambda function empty
+          });
+        }
+        */
+        
+        var new_folder_path = "/";
+        if(current_path != "/") {
+          new_folder_path = current_path+"/";
+        }
+	path_for_new_folder(new_folder_path);
+        var query_url = "/dir?path="+current_path;
+	microAjax(query_url, function (res) { // lambda function
+                var objJSON = JSON.parse(res);
+                // append_row("/", "dir", current_path);
+                append_row(".", "dir", current_path);
+                append_row("..", "dir", current_path);
+                for(var i = 0; i < objJSON.files.length; i++) {
+                  var file_type = "file";
+                  if(i < objJSON.ndirs)
+                    file_type = "dir";
+                  append_row(objJSON.files[i], file_type, current_path);
+                }
+	});
+      }
+
+      window.onload = function ()
+      {
+            load("/styles.css", "css", function () {
+                load("/microajax.js", "js", function () {
+                    directory_listing("/dir");
+                });
+            });
+            // refresh values every 5 seconds
+            //setInterval(function() {
+            //    directory_listing("/read");
+            //}, 5000);
+      }
+    </script>
+</head>
+<body>
+    <a href="index.htm">Home</a>
+    <div class="row">
+      <label for="Readings">ULX3S SD directory</label>
+    </div>
+    <div>
+      <form method="post" enctype="multipart/form-data">
+        <input name="myFile" type="file">
+        <button>Save to SD</button>
+      </form>
+    </div>
+    <div>
+      <form action="/mkdir" method="get">
+        <input type="text" name="path" value="/" id="new_folder"/>
+        <input type="submit" value="New Folter"/>
+      </form>
+    </div>
+    <div>
+      <form method="post">
+        <table id="directory_table">
+          <tr>
+            <th>name</th>
+            <th>delete</th>
+          </tr>
+        </table>
+      </form>
+    </div>
+</body>
+</html>

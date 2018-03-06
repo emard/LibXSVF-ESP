@@ -64,9 +64,9 @@ SSD_13XX tft = SSD_13XX(__CS_TFT, __DC_TFT);
 // At boot it will attempt to connect as client.
 // If this attempt fails, it will become AP.
 // Same ssid/password apply for client and AP.
+char host_name[32] = "websvf"; // request local name when connected as client, same as ssid
 char ssid[32] = "websvf";
-char password[32] = "12345678";
-char host_name[32] = "websvf"; // request local name when connected as client
+char password[32] = ""; // >=8 chars or "" for open access
 char http_username[32] = "admin";
 char http_password[32] = "admin";
 
@@ -414,7 +414,11 @@ void init_oled_show_ip()
   tft.setTextColor(WHITE);
   tft.setTextScale(1);
   tft.setTextWrap(false);
-  IPAddress ip = WiFi.localIP();
+  IPAddress ip;
+  if(WiFi.status() == WL_CONNECTED)
+    ip = WiFi.localIP();
+  else
+    ip = WiFi.softAPIP();
   tft.println(ip);
 }
 
@@ -749,11 +753,24 @@ void setup(){
   Serial.begin(115200);
   Serial.setDebugOutput(true);
 
+  #if 0
+  // mounting SD card at this time can interfere with FPGA access
+  // if amiga core is loaded to FPGA config flash
+  // and powered up, amiga won't boot from SD
+  // because both ESP32 and amiga are accessing SD card at the same time
+  // some exclusion mechanism needs to be done
+  sd_mount();
+  read_config(SD);
+  sd_unmount();
+  #endif
+
   #if ESP8266
   WiFi.hostname(host_name);
   #endif
-  WiFi.mode(WIFI_AP_STA);
+  WiFi.mode(WIFI_AP_STA); // combned AP and STA
+  // WiFi.mode(WIFI_AP);
   WiFi.softAP(host_name);
+  // WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.printf("STA: Failed!\n");
@@ -761,11 +778,16 @@ void setup(){
     delay(1000);
     WiFi.begin(ssid, password);
   }
-       Serial.println(ssid);
-       Serial.println(password);
-       Serial.println(host_name);
-       Serial.println(http_username);
-       Serial.println(http_password);
+  Serial.print("host:");
+  Serial.println(host_name);
+  Serial.print("wifi ssid:");
+  Serial.println(ssid);
+  Serial.print("wifi pass:");
+  Serial.println(password);
+  Serial.print("web user:");
+  Serial.println(http_username);
+  Serial.print("web pass:");
+  Serial.println(http_password);
 
   // Serial.println("done!");
   // file_browser(1); // reset
@@ -815,7 +837,7 @@ void setup(){
     request->send(200, "text/plain", String(ESP.getFreeHeap()));
   });
 
-  #if 1
+  // http://192.168.4.1/dir?path=/path/to/directory
   server.on("/dir", HTTP_GET, [](AsyncWebServerRequest *request)
   {
     AsyncResponseStream *response = request->beginResponseStream("text/json");
@@ -828,47 +850,108 @@ void setup(){
         if(p->value())
           DirPath=p->value();
     }
-    root["path"]=DirPath;
     init_oled_show_ip();
     mount_read_directory();
+    root["path"]=DirPath;
+    int ndirs = 0;
+    JsonArray& data = root.createNestedArray("files");
     for(int i = 0; i < DirN; i++)
-      root[String(i)+(DirEntries[i].type ? "d" : "f")] = DirEntries[i].name;
+    {
+      if(DirEntries[i].type) ndirs++; // count how many are dirs before files
+      data.add(DirEntries[i].name);
+    }
+    root["ndirs"]=String(ndirs);
     root.printTo(*response);
     request->send(response);
   });
-  #endif
 
-  // http://192.168.4.1/delete?file=/path/to/junk.file
-  server.on("/delete", HTTP_GET, [](AsyncWebServerRequest *request){
-    String message = "usage: http://192.168.4.1/delete?file=/path/to/junk.file";
-    int params = request->params();
-    for(int i=0;i<params;i++)
+  // http://192.168.4.1/mkdir?path=/path/to/new_directory
+  server.on("/mkdir", HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+    int isuccess = 0;
+    if(request->hasParam("path"))
     {
-      AsyncWebParameter* p = request->getParam(i);
+      AsyncWebParameter* p = request->getParam("path");
       if(p)
-      if(p->name())
-      if(p->name() == "file")
-      {
-          if(p->value())
+        if(p->value())
+        {
+          if(sd_mount()>=0)
           {
-            sd_file_name_svf = p->value();
-            sd_delete_file_activate = 1;
-            message = "requested to delete file " + sd_file_name_svf;
+            if(SD.mkdir(p->value()))
+            {
+              isuccess = 1;
+              // todo: switch to parent directory (path go up one level)
+            }
+            sd_unmount();
           }
-      }
+        }
     }
-#if 0
-    AsyncWebParameter *p = request->getParam("file");
-    if(p)
+    if(isuccess)
     {
-      sd_file_name_svf = p->value();
-      if(sd_file_name_svf != "")
-      {
-        sd_delete_file_activate = 1;
-        message = "requested to delete file " + sd_file_name_svf;
-      }
+      init_oled_show_ip();
+      mount_read_directory();
     }
-#endif
+    String message = isuccess ? "success" : "fail";
+    request->send(200, "text/plain", message);
+  });
+
+  // http://192.168.4.1/rmdir?path=/path/to/junk_directory
+  // directory should be empty to be removed
+  server.on("/rmdir", HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+    int isuccess = 0;
+    if(request->hasParam("path"))
+    {
+      AsyncWebParameter* p = request->getParam("path");
+      if(p)
+        if(p->value())
+        {
+          if(sd_mount()>=0)
+          {
+            if(SD.rmdir(p->value()))
+            {
+              isuccess = 1;
+              // todo: switch to parent directory (path go up one level)
+            }
+            sd_unmount();
+          }
+        }
+    }
+    if(isuccess)
+    {
+      init_oled_show_ip();
+      mount_read_directory();
+    }
+    String message = isuccess ? "success" : "fail";
+    request->send(200, "text/plain", message);
+  });
+
+  // http://192.168.4.1/rm?path=/path/to/junk.file
+  server.on("/rm", HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+    int isuccess = 0;
+    if(request->hasParam("path"))
+    {
+      AsyncWebParameter* p = request->getParam("path");
+      if(p)
+        if(p->value())
+        {
+          if(sd_mount()>=0)
+          {
+            if(SD.remove(p->value()))
+            {
+              isuccess = 1;
+            }
+            sd_unmount();
+          }
+        }
+    }
+    if(isuccess)
+    {
+      init_oled_show_ip();
+      mount_read_directory();
+    }
+    String message = isuccess ? "success" : "fail";
     request->send(200, "text/plain", message);
   });
 
@@ -946,7 +1029,7 @@ void setup(){
           //Serial.printf("_POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
         } else {
           //Serial.printf("_GET[%s]: %s\n", p->name().c_str(), p->value().c_str());
-          if(p->name() == "save")
+          if(p->name() == "path") // directory path specified -> no jtag upload but save to SD
           {
             if(p->value())
             {
