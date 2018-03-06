@@ -53,6 +53,10 @@ itself works but can't open any pages stored in SPIFFS.
     NtpClient
     Time
 
+    *** OLED ***
+    SSD1331
+    https://github.com/emard/SSD_13XX
+
 Start arduino, open examples->LibXSVF
 
 # Upload bitstream file to SPI flash
