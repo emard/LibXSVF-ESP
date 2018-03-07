@@ -162,6 +162,75 @@
                 }
 	});
       }
+
+      function enableUploadButtion() {
+        $id("uploadButton").disabled = false;
+        $id("uploadButton").value = "Upload";
+      }
+
+      function fileSelected() {
+        var file = $id('fileToUpload').files[0];
+        if (file) {
+          var fileSize = 0;
+          if (file.size > 1024 * 1024)
+            fileSize = (Math.round(file.size * 100 / (1024 * 1024)) / 100).toString() + 'MB';
+          else
+            fileSize = (Math.round(file.size * 100 / 1024) / 100).toString() + 'KB';
+          // $id('fileName').innerHTML = 'File: ' + file.name;
+          $id('fileSize').innerHTML = fileSize;
+          // $id('fileType').innerHTML = 'Type: ' + file.type;
+        }
+      }
+
+      function progress_empty() {
+        var progress = $id("progress").childNodes[0];
+        progress.style.backgroundPosition = 100 + "% 0";
+        progress.innerHTML = "Error";
+      }
+
+      function uploadFile() {
+        var fd = new FormData();
+        fd.append("fileToUpload", $id('fileToUpload').files[0]);
+        // fd.append("post_param_name", "post_param_value"); // add a POST parameter with value
+        $id("report").innerHTML = "Uploading...";
+        var progress = $id("progress").childNodes[0];
+        var xhr = new XMLHttpRequest();
+        // graphical progress bar
+        xhr.upload.addEventListener("progress", function(e) {
+          // var pc = parseInt(100 - (e.loaded / e.total * 100));
+          var pc = Math.round(e.loaded * 100 / e.total);
+          var bar = Math.round(100 - pc);
+	  progress.style.backgroundPosition = bar + "% 0";
+	  progress.innerHTML = pc + "%";
+	}, false);
+        xhr.addEventListener("load", uploadComplete, false);
+        xhr.addEventListener("error", uploadFailed, false);
+        xhr.addEventListener("abort", uploadCanceled, false);
+        xhr.open($id('upload_form').method, $id('upload_form').action);
+        xhr.send(fd);
+      }
+
+      function uploadComplete(evt) {
+        /* This event is raised when the server send back a response */
+        // alert(evt.target.responseText);
+        var response = evt.target.responseText;
+        if (response.indexOf("success") == -1)
+          progress_empty();
+        $id("report").innerHTML = response;
+        enableUploadButtion();
+        window.location.reload(true); 
+      }
+
+      function uploadFailed(evt) {
+        enableUploadButtion();
+        // pop-up window
+        alert("There was an error attempting to upload the file.");
+      }
+
+      function uploadCanceled(evt) {
+        enableUploadButtion();
+        alert("The upload has been canceled by the user or the browser dropped the connection.");
+      }
       
       window.onload = function ()
       {
@@ -178,20 +247,23 @@
     </script>
 </head>
 <body>
-    <a href="index.htm">Home</a>
+  <a href="index.htm">Home</a>
+  <form id="upload_form" enctype="multipart/form-data" method="post">
     <div class="row">
-      <label for="Readings">ULX3S SD directory</label>
+      <label for="fileToUpload">Save to SD</label>
+      <br/>
+      <input type="file" name="fileToUpload" id="fileToUpload" onchange="fileSelected();"/>
+      <mark id="fileSize"></mark>
+      <input type="button" id="uploadButton" value="Upload"
+      onclick="this.disabled=true;this.value='Wait';uploadFile()"/>
     </div>
+  </form>
+  <div id="progress"><p>0%</p></div>
+  <div id="report"></div>
     <div>
-      <form method="post" enctype="multipart/form-data">
-        <input name="myFile" type="file">
-        <button>Save to SD</button>
-      </form>
-    </div>
-    <div>
-            <input type="text" name="path" value="/" id="new_folder"
-                   onfocus="this.selectionStart = this.selectionEnd = this.value.length;"/>
-            <button onclick="mkdir('new_folder')">New Folder</button>
+      <input type="text" name="path" value="/" id="new_folder"
+             onfocus="this.selectionStart = this.selectionEnd = this.value.length;"/>
+      <button onclick="mkdir('new_folder')">New Folder</button>
     </div>
     <div>
       <table id="directory_table">

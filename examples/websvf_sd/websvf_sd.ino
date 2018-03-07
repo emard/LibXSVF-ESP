@@ -405,7 +405,12 @@ void scan_keyboard()
 
 void init_oled_show_ip()
 {
-  tft.begin();
+  static int oled_begin_done = 0;
+  if(oled_begin_done == 0)
+  {
+    tft.begin();
+    oled_begin_done = 1;
+  }
   tft.setRotation(2);
   tft.defineScrollArea(0,0,0, 63, 0);
   tft.scroll(false);
@@ -1005,6 +1010,7 @@ void setup(){
   server.onFileUpload([](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final){
     static int packet_counter = 0;
     static int out_of_order = 0;
+    static int write_error = 0;
     static size_t expect_index = 0;
     static char report[256];
     static File save_file;
@@ -1014,6 +1020,7 @@ void setup(){
       packet_counter=0;
       expect_index = index; // for out-of-order detection
       out_of_order = 0;
+      write_error = 0;
       report[0] = '\0';
       digitalWrite(LED_WIFI, HIGH);
 #if 1
@@ -1033,7 +1040,7 @@ void setup(){
           {
             if(p->value())
             {
-              Serial.printf("save %s to directory %s\n", filename, p->value().c_str());
+              Serial.printf("save %s to directory %s\n", filename.c_str(), p->value().c_str());
               save_dirname = p->value();
               if(!save_dirname.startsWith("/"))
                 save_dirname = "/"+save_dirname;
@@ -1079,12 +1086,22 @@ void setup(){
     if(out_of_order == 0)
     {
       if(save_file)
-        save_file.write(data, len);
+      {
+        if(len != save_file.write(data, len))
+          write_error++;
+      }
       else
         jtag.play_svf_packet(index, data, len, final, report);
     }
     if(final)
     {
+      if(save_file) // FIXME: track also write error (disk full)
+      {
+        if(write_error == 0)
+          strcpy(report,"success");
+        else
+          strcpy(report,"fail"); // disk full probably
+      }
       if(out_of_order != 0)
         request->send(200, "text/plain", "received" + String(out_of_order) + " out-of-order packets");
       else
@@ -1092,11 +1109,16 @@ void setup(){
       if(save_file)
       {
         save_file.close();
+        #if 0
         sd_unmount();
+        // disabled because the same here will be done
+        // when web page reloads
+        // then it will init OLED to read directory content
         init_oled_show_ip();
         // cd to the uploaded file's directory
-        DirPath=save_dirname; // doesn't work like expected
+        DirPath=save_dirname;
         mount_read_directory();
+        #endif
       }
       Serial.printf("UploadEnd: %s (%u)\n", filename.c_str(), index+len);
       digitalWrite(LED_WIFI, LOW);

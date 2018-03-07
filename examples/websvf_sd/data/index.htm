@@ -25,7 +25,7 @@
             fileSize = (Math.round(file.size * 100 / 1024) / 100).toString() + 'KB';
 
           // $id('fileName').innerHTML = 'File: ' + file.name;
-          $id('fileSize').innerHTML = 'Size: ' + fileSize;
+          $id('fileSize').innerHTML = fileSize;
           // $id('fileType').innerHTML = 'Type: ' + file.type;
         }
       }
@@ -42,8 +42,6 @@
         $id("report").innerHTML = "Uploading...";
         var progress = $id("progress").childNodes[0];
         var xhr = new XMLHttpRequest();
-        // text only
-        //xhr.upload.addEventListener("progress", uploadProgress, false); //
         // graphical progress bar
         xhr.upload.addEventListener("progress", function(e) {
           // var pc = parseInt(100 - (e.loaded / e.total * 100));
@@ -55,18 +53,8 @@
         xhr.addEventListener("load", uploadComplete, false);
         xhr.addEventListener("error", uploadFailed, false);
         xhr.addEventListener("abort", uploadCanceled, false);
-        xhr.open($id('form1').method, $id('form1').action);
+        xhr.open($id('upload_form').method, $id('upload_form').action);
         xhr.send(fd);
-      }
-
-      function uploadProgress(evt) {
-        if (evt.lengthComputable) {
-          var percentComplete = Math.round(evt.loaded * 100 / evt.total);
-          $id('progressNumber').innerHTML = percentComplete.toString() + '%';
-        }
-        else {
-          $id('progressNumber').innerHTML = 'unable to compute';
-        }
       }
 
       function uploadComplete(evt) {
@@ -92,22 +80,18 @@
     </script>
 </head>
 <body>
-  <form id="form1" enctype="multipart/form-data" method="post" action="index.htm">
+  <a href="dir.htm">Directory</a>
+  <form id="upload_form" enctype="multipart/form-data" method="post" action="index.htm">
     <div class="row">
-      <a href="dir.htm">Directory</a>
-      <br/>
-      <label for="fileToUpload">Select SVF File</label>
+      <label for="fileToUpload">Upload SVF File to FPGA</label>
       or use <a href="minimal.htm">minimal</a>
       or <a href="svfupload.py" target="svfupload.py">svfupload.py<a>
       <br/>
       <input type="file" name="fileToUpload" id="fileToUpload" onchange="fileSelected();"/>
-    </div>
-    <div id="fileSize"></div>
-    <div class="row">
-      <input type="button" id="uploadButton" value="Upload to FPGA"
+      <mark id="fileSize"></mark>
+      <input type="button" id="uploadButton" value="Upload"
       onclick="this.disabled=true;this.value='Wait';uploadFile()"/>
     </div>
-    <div id="progressNumber"></div>
   </form>
   <div id="progress"><p>0%</p></div>
   <div id="report"></div>

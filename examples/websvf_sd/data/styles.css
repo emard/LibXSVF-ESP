@@ -112,6 +112,10 @@ table tr td:nth-child(2):hover {
   background-color: #c599f5;
 }
 
+table tr td:nth-child(2) button {
+  color: #7F0000;
+}
+
 /* make whole table cell in fist column clickable */
 table tr td:nth-child(1) a {
     display:block;
