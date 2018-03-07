@@ -33,6 +33,9 @@
       {
         var newfolder = document.getElementById("new_folder");
         newfolder.value = path;
+        // move cursor to end and let last part of the path be shown
+        //newfolder.selectionEnd = newfolder.value.length;
+        //newfolder.selectionStart = newfolder.value.length;
       }
 
       function RemoveLastDirectoryPartOf(the_url)
@@ -88,11 +91,11 @@
       // on successful delete, remove the file/dir name
       // and disable the delete button
       function delete_button(idnum, file_type, full_path) {
-        // todo: get the delete url
+        var query_url = "";
         if(file_type == "file")
-          var query_url = "/rm?path="+full_path;
+          query_url = "/rm?path="+full_path;
         else
-          var query_url = "/rmdir?path="+full_path;
+          query_url = "/rmdir?path="+full_path;
 	microAjax(query_url, function (res) { // lambda function
 	  if(res == "success") {
             var obj_line = document.getElementById("name"+idnum); 
@@ -120,6 +123,16 @@
         if (!results) return null;
         if (!results[2]) return '';
         return decodeURIComponent(results[2].replace(/\+/g, " "));
+      }
+      
+      // create directory and if successful, reload this web page
+      function mkdir(input_id) {
+        full_path = document.getElementById(input_id).value;
+        var query_url = "/mkdir?path="+full_path;
+	microAjax(query_url, function (res) { // lambda function
+	  if(res == "success")
+	    window.location.reload(true); 
+	});
       }
 
       function directory_listing(url) // url parameter unused
@@ -176,17 +189,12 @@
       </form>
     </div>
     <div>
-      <form action="/mkdir" method="get">
-        <input type="text" name="path" value="/" id="new_folder"/>
-        <input type="submit" value="New Folder"/>
-      </form>
+            <input type="text" name="path" value="/" id="new_folder"
+                   onfocus="this.selectionStart = this.selectionEnd = this.value.length;"/>
+            <button onclick="mkdir('new_folder')">New Folder</button>
     </div>
     <div>
       <table id="directory_table">
-        <tr>
-          <th>name</th>
-          <th>delete</th>
-        </tr>
       </table>
     </div>
 </body>
