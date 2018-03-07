@@ -35,14 +35,14 @@
         newfolder.value = path;
       }
 
-function RemoveLastDirectoryPartOf(the_url)
-{
-    var the_arr = the_url.split('/');
-    the_arr.pop();
-    return( the_arr.join('/') );
-}
+      function RemoveLastDirectoryPartOf(the_url)
+      {
+        var the_arr = the_url.split('/');
+        the_arr.pop();
+        return( the_arr.join('/') );
+      }
 
-            function append_row(name, file_type, current_path) {
+      function append_row(name, file_type, current_path, idnum) {
               var full_path = "";
               if(name=="/") {
                 full_path = "/";
@@ -60,43 +60,57 @@ function RemoveLastDirectoryPartOf(the_url)
               var table = document.getElementById("directory_table");
               var tr = document.createElement("tr");
               var td1 = document.createElement("td");
+              td1.id="name"+idnum;
               if(file_type == "file")
                 var txt1 = document.createTextNode(name);
               else {
                 var txt1 = document.createElement('a');
                 var linkText = document.createTextNode(name);
                 txt1.appendChild(linkText);
-                // txt1.title = "subdir"; // shows oh mouse hover
                 txt1.href = base_href;
               }
-              var td2 = document.createElement("td");
-              // now create delete link "x"
-              //var txt2 = document.createTextNode('a');
-              var txt2 = document.createElement('a');
-              var deleteText = document.createTextNode("x");
-              txt2.appendChild(deleteText);
-              txt2.title = "DELETE"; // shows oh mouse hover
-              if(file_type == "file")
-                txt2.href = "rm?path="+full_path;
-              else
-                txt2.href = "rmdir?path="+full_path;
               td1.appendChild(txt1);
               tr.appendChild(td1);
+              var td2 = document.createElement("td");
               if(name != "/" && name != "." && name != "..") {
-                td2.appendChild(txt2);
-                tr.appendChild(td2);
+                var deleteText = document.createTextNode("\u274C"); // multiplication cross "x"
+                var del_btn = document.createElement("button");
+                del_btn.title = "DELETE"; // shows oh mouse hover
+                del_btn.appendChild(deleteText);
+                del_btn.onclick=function() { delete_button(idnum, file_type, full_path) };
+                del_btn.id="delbtn"+idnum;
+                td2.appendChild(del_btn);
               }
+              tr.appendChild(td2);
               table.appendChild(tr);
-            }
+      }
 
-            function clear_table() {
+      // on successful delete, remove the file/dir name
+      // and disable the delete button
+      function delete_button(idnum, file_type, full_path) {
+        // todo: get the delete url
+        if(file_type == "file")
+          var query_url = "/rm?path="+full_path;
+        else
+          var query_url = "/rmdir?path="+full_path;
+	microAjax(query_url, function (res) { // lambda function
+	  if(res == "success") {
+            var obj_line = document.getElementById("name"+idnum); 
+            obj_line.removeChild(obj_line.firstChild);
+            var del_btn = document.getElementById("delbtn"+idnum); 
+            del_btn.disabled="true"; // make button greyed out (disabled)
+          }
+	});
+      }
+
+      function clear_table() {
               var elmtTable = document.getElementById('directory_table');
               var tableRows = elmtTable.getElementsByTagName('tr');
               var rowCount = tableRows.length;
               for (var x=rowCount-1; x>0; x--) {
                 elmtTable.removeChild(tableRows[x]);
               }
-            }
+      }
 
       function getParameterByName(name, url) {
         if (!url) url = window.location.href;
@@ -116,21 +130,6 @@ function RemoveLastDirectoryPartOf(the_url)
         if(current_path=="")
           current_path="/";
 
-        /*
-        var delete_request = getParameterByName("delete");
-        if(delete_request) {
-          var delete_url="/rm?path="+delete_request;
-          microAjax(delete_url, function (res) { // lambda function empty
-          });
-        }
-        delete_request = getParameterByName("rmdir");
-        if(delete_request) {
-          var delete_url="/rmdir?path="+delete_request;
-          microAjax(delete_url, function (res) { // lambda function empty
-          });
-        }
-        */
-        
         var new_folder_path = "/";
         if(current_path != "/") {
           new_folder_path = current_path+"/";
@@ -146,11 +145,11 @@ function RemoveLastDirectoryPartOf(the_url)
                   var file_type = "file";
                   if(i < objJSON.ndirs)
                     file_type = "dir";
-                  append_row(objJSON.files[i], file_type, current_path);
+                  append_row(objJSON.files[i], file_type, current_path, i);
                 }
 	});
       }
-
+      
       window.onload = function ()
       {
             load("/styles.css", "css", function () {
@@ -179,18 +178,16 @@ function RemoveLastDirectoryPartOf(the_url)
     <div>
       <form action="/mkdir" method="get">
         <input type="text" name="path" value="/" id="new_folder"/>
-        <input type="submit" value="New Folter"/>
+        <input type="submit" value="New Folder"/>
       </form>
     </div>
     <div>
-      <form method="post">
-        <table id="directory_table">
-          <tr>
-            <th>name</th>
-            <th>delete</th>
-          </tr>
-        </table>
-      </form>
+      <table id="directory_table">
+        <tr>
+          <th>name</th>
+          <th>delete</th>
+        </tr>
+      </table>
     </div>
 </body>
 </html>
