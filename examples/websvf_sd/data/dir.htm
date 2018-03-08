@@ -218,7 +218,8 @@
           progress_empty();
         $id("report").innerHTML = response;
         enableUploadButtion();
-        window.location.reload(true); 
+        // setTimeout(enableUploadButtion, 1000); // too fast upload will crash ESP32
+        // window.location.reload(true); // immediately refreshing will crash ESP32
       }
 
       function uploadFailed(evt) {
