@@ -66,7 +66,7 @@ SSD_13XX tft = SSD_13XX(__CS_TFT, __DC_TFT);
 // Same ssid/password apply for client and AP.
 char host_name[32] = "websvf"; // request local name when connected as client, same as ssid
 char ssid[32] = "websvf";
-char password[32] = ""; // >=8 chars or "" for open access
+char password[32] = "12345678"; // >=8 chars or "" for open access
 char http_username[32] = "admin";
 char http_password[32] = "admin";
 
@@ -79,6 +79,7 @@ AsyncWebSocket ws("/ws");
 AsyncEventSource events("/events");
 
 #define LED_WIFI 5
+#define BTN0_PIN 0
 
 /*
 > To change JTAG pinout, edit file
@@ -102,6 +103,7 @@ int sd_program_activate = 0;
 int spiffs_program_activate = 0;
 int sd_detach = 1; // start with SPI bus detached (SD and OLED initially not in use)
 int sd_delete_file_activate = 0; // any filename, passed to sd_file_name_svf
+int sd_cs_counter = 0; // interrupt detects external SD access
 
 // directory read to malloced struct
 String DirPath = "/"; // current directory path
@@ -114,6 +116,11 @@ struct S_DirEntries
 };
 struct S_DirEntries *DirEntries = NULL; // realloced N such entries
 char *DirNames = NULL; // realloced size for all names in current directory
+
+void IRAM_ATTR sd_cs_interrupt()
+{
+  sd_cs_counter++;
+}
 
 // string compare function for directory soring, ignore case
 int DirNameCmp(const void *a, const void *b)
@@ -752,22 +759,56 @@ int sd_delete(String filename)
 }
 
 
-void setup(){
-  pinMode(LED_WIFI, OUTPUT);
-  pinMode(0, INPUT_PULLUP); // holding GPIO0 LOW will signal ESP32 to load "passthru.svf" from SPIFFS to JTAG
+void setup()
+{
+  pinMode(__CS_SD, INPUT_PULLUP); // interrupt will monitor SD chip select
   Serial.begin(115200);
   Serial.setDebugOutput(true);
+  pinMode(LED_WIFI, OUTPUT);
+  digitalWrite(LED_WIFI, HIGH); // welcome blink
+  pinMode(BTN0_PIN, INPUT_PULLUP); // holding GPIO0 LOW will signal ESP32 to load "passthru.svf" from SPIFFS to JTAG
+  delay(30); // 30ms delay, allow pullup to work
+  if(digitalRead(__CS_SD) == LOW)
+    sd_cs_counter = 1; // SD card is accessed by FPGA
+  else
+  { // wait some extra time and monitor is FPGA accessing SD
+    sd_cs_counter = 0; // reset counter, sd_cs_interrupt() will increment this
+    attachInterrupt(digitalPinToInterrupt(BTN0_PIN), sd_cs_interrupt, FALLING);
+    for(int i = 0; i < 5 && sd_cs_counter == 0; i++)
+      delay(100); // during this delay (total 0.5 s) SD pin will be monitored
+    detachInterrupt(digitalPinToInterrupt(BTN0_PIN));
+    if(digitalRead(__CS_SD) == LOW) // if interrupt didn't catch the transition
+      sd_cs_counter++; // increment just to be sure    
+  }
+  int btn0_pressed_at_powerup = 0;
+  if(digitalRead(BTN0_PIN) == LOW)
+    btn0_pressed_at_powerup = 1;
+  digitalWrite(LED_WIFI, LOW); // turn off initial blink
+  // global variable sd_cs_counter will contain number of sd cs activations
 
-  #if 0
-  // mounting SD card at this time can interfere with FPGA access
-  // if amiga core is loaded to FPGA config flash
-  // and powered up, amiga won't boot from SD
-  // because both ESP32 and amiga are accessing SD card at the same time
-  // some exclusion mechanism needs to be done
-  sd_mount();
-  read_config(SD);
-  sd_unmount();
-  #endif
+  if(sd_cs_counter == 0 && btn0_pressed_at_powerup == 0)
+  // if sd card access is detected at powerup we cannot read SD card
+  // with passowords -> we can only use compiled password
+  // if btn0 is held during initial blink at powerup
+  // we will default to open AP
+  // in both cases we skip reading SD card
+  {
+    // warning - detection of SD accesss is not 100% reliable.
+    // Hold BTN0 to be sure to avoid SD access.
+    // mounting SD card at this time can interfere with FPGA access.
+    // if amiga core is loaded to FPGA config flash
+    // and powered up, amiga won't boot from SD
+    // because both ESP32 and amiga are accessing SD card at the same time
+    // some exclusion mechanism needs to be done.
+    // if we skip this, compiled-in password will be used instead from SD
+    sd_mount();
+    read_config(SD);
+    sd_unmount();
+  }
+
+  // Start with open AP
+  if(btn0_pressed_at_powerup)
+    password[0] = '\0'; // nul char terminator = 0-length password = open AP
 
   #if ESP8266
   WiFi.hostname(host_name);
@@ -783,6 +824,8 @@ void setup(){
     delay(1000);
     WiFi.begin(ssid, password);
   }
+  else // 2nd blink indicates connection to remote AP
+    digitalWrite(LED_WIFI, HIGH); // conected blink
   Serial.print("host:");
   Serial.println(host_name);
   Serial.print("wifi ssid:");
@@ -1132,6 +1175,7 @@ void setup(){
       Serial.printf("BodyEnd: %u\n", total);
   });
   server.begin();
+  digitalWrite(LED_WIFI, LOW); // remove conected blink
 }
 
 
@@ -1154,7 +1198,7 @@ void periodic()
     // Serial.println(ip);
     if(sd_detach == 0)
       file_browser(0);
-    if(digitalRead(0) == LOW)
+    if(digitalRead(BTN0_PIN) == LOW)
     { // btn0 pressed
       if(btn0_hold_counter == 5) // short hold, enable OLED and SD access
       {
