@@ -45,7 +45,7 @@
         return( the_arr.join('/') );
       }
 
-      function append_row(name, file_type, current_path, idnum) {
+      function append_row(name, entry_type, current_path, idnum) {
               var full_path = "";
               if(name=="/") {
                 full_path = "/";
@@ -64,7 +64,7 @@
               var tr = document.createElement("tr");
               var td1 = document.createElement("td");
               td1.id="name"+idnum;
-              if(file_type == "file")
+              if(entry_type == "file")
                 var txt1 = document.createTextNode(name);
               else {
                 var txt1 = document.createElement('a');
@@ -76,23 +76,50 @@
               tr.appendChild(td1);
               var td2 = document.createElement("td");
               if(name != "/" && name != "." && name != "..") {
+                // UTF8 chars symbolizing delete: \u274C, \u2BBD, \u2BBE,
+                // \u2BBF, \u2612
                 var deleteText = document.createTextNode("\u274C"); // multiplication cross "x"
                 var del_btn = document.createElement("button");
                 del_btn.title = "DELETE"; // shows oh mouse hover
                 del_btn.appendChild(deleteText);
-                del_btn.onclick=function() { delete_button(idnum, file_type, full_path) };
+                del_btn.onclick=function() { delete_button(idnum, entry_type, full_path) };
                 del_btn.id="delbtn"+idnum;
                 td2.appendChild(del_btn);
               }
               tr.appendChild(td2);
+              if (name.toLowerCase().endsWith(".svf"))
+              {
+                // add button for FPGA upload
+                var td3 = document.createElement("td");
+                // UTF8 chars symbolizing upload: \u2BB9
+                // floppy:U+14FBE or U+1F5AB or U+1F5AC
+                // arrow:\u2192
+                // BGA: \u25A3 or \u25A6 or U+1F532
+                var progText = document.createTextNode("\uD83D\uDCBE\u2192\u25A3"); // multiplication cross "x"
+                var prog_btn = document.createElement("button");
+                prog_btn.title = "PROGRAM FPGA"; // shows oh mouse hover
+                prog_btn.appendChild(progText);
+                prog_btn.onclick=function() { prog_button(full_path) };
+                prog_btn.id="progbtn"+idnum;
+                td3.appendChild(prog_btn);
+                tr.appendChild(td3);
+              }
               table.appendChild(tr);
+      }
+      
+      function prog_button(full_path) {
+        var query_url = "/svf?path="+full_path;
+	microAjax(query_url, function (res) { // lambda function
+	  if(res == "requested") {
+          }
+	});
       }
 
       // on successful delete, remove the file/dir name
       // and disable the delete button
-      function delete_button(idnum, file_type, full_path) {
+      function delete_button(idnum, entry_type, full_path) {
         var query_url = "";
-        if(file_type == "file")
+        if(entry_type == "file")
           query_url = "/rm?path="+full_path;
         else
           query_url = "/rmdir?path="+full_path;
@@ -155,10 +182,10 @@
                 append_row(".", "dir", current_path);
                 append_row("..", "dir", current_path);
                 for(var i = 0; i < objJSON.files.length; i++) {
-                  var file_type = "file";
+                  var entry_type = "file";
                   if(i < objJSON.ndirs)
-                    file_type = "dir";
-                  append_row(objJSON.files[i], file_type, current_path, i);
+                    entry_type = "dir";
+                  append_row(objJSON.files[i], entry_type, current_path, i);
                 }
 	});
       }

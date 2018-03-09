@@ -487,7 +487,7 @@ void file_browser(uint8_t reset)
       mount_read_directory();
       return;
     }
-    else // it's afile
+    else // it's a file
     {
       sd_file_name_svf = full_path;
       sd_program_activate = 1;
@@ -911,6 +911,24 @@ void setup()
     root["ndirs"]=String(ndirs);
     root.printTo(*response);
     request->send(response);
+  });
+
+  // http://192.168.4.1/svf?path=/path/to/sd_card/file.svf
+  server.on("/svf", HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+    int isuccess = 0;
+    if(request->hasParam("path"))
+    {
+      AsyncWebParameter* p = request->getParam("path");
+      if(p)
+        if(p->value())
+        {
+          sd_file_name_svf = p->value();
+          sd_program_activate = 1;
+        }
+    }
+    // currently web interface doesn't know did it actually succeed
+    request->send(200, "text/plain", "requested");
   });
 
   // http://192.168.4.1/mkdir?path=/path/to/new_directory
