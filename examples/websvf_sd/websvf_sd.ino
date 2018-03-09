@@ -493,11 +493,13 @@ void file_browser(uint8_t reset)
       sd_program_activate = 1;
     }
   }
-  if(Ifb.hold[BTN_DOWN] == 1 || Ifb.hold[BTN_DOWN] > 4)
-    if(Ifb.cursor < DirN-1)
+  if(Ifb.hold[BTN_DOWN] == 1 || Ifb.hold[BTN_DOWN] > 40)
+  {
+    if(Ifb.cursor < DirN-1 && (Ifb.hold[BTN_DOWN] & 7) == 1) // slowdown every 8
       Ifb.cursor++;
-  if(Ifb.hold[BTN_UP] == 1 || Ifb.hold[BTN_UP] > 4)
-    if(Ifb.cursor > 0)
+  }
+  if(Ifb.hold[BTN_UP] == 1 || Ifb.hold[BTN_UP] > 40)
+    if(Ifb.cursor > 0 && (Ifb.hold[BTN_UP] & 7) == 1) // slowdown every 8
       Ifb.cursor--;
   if(oldcursor != Ifb.cursor)
   {
@@ -1204,26 +1206,24 @@ void setup()
 // or tools like arp, nmap, tcpdump, ...
 void periodic()
 {
-  const int32_t report_interval = 100; // ms
+  const int32_t report_interval = 10; // ms
   static int32_t before_ms;
   static uint32_t btn0_hold_counter = 0; // must hold btn0 1 second to take effect
   int32_t now_ms = millis();
   int32_t diff_ms = now_ms - before_ms;
   if(abs(diff_ms) > report_interval)
   {
-    IPAddress ip = WiFi.localIP();
     before_ms = now_ms;
-    // Serial.println(ip);
     if(sd_detach == 0)
       file_browser(0);
     if(digitalRead(BTN0_PIN) == LOW)
     { // btn0 pressed
-      if(btn0_hold_counter == 5) // short hold, enable OLED and SD access
+      if(btn0_hold_counter == 50) // short hold, enable OLED and SD access
       {
         sd_detach = 0; // allow SD and OLED access
         init_oled_show_ip();
       }
-      if(btn0_hold_counter == 20) // hold button 2 seconds to take control over FPGA
+      if(btn0_hold_counter == 200) // hold button 2 seconds to take control over FPGA
         spiffs_program_activate = 1;
       btn0_hold_counter++;
     }
@@ -1265,3 +1265,7 @@ void loop()
   ArduinoOTA.handle();
 }
 
+/* TODO
+ * [x] faster scanning for SPI keys (improve user click experience)
+ * [ ] download file to web browser
+ */
