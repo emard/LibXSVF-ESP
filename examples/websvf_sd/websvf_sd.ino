@@ -61,6 +61,8 @@ SSD_13XX tft = SSD_13XX(__CS_TFT, __DC_TFT);
 #include <LibXSVF.h>
 #include <ArduinoJson.h>
 
+#include "f32cup.h"
+
 // At boot it will attempt to connect as client.
 // If this attempt fails, it will become AP.
 // Same ssid/password apply for client and AP.
@@ -99,10 +101,12 @@ File SVF_file; // SVF file opened on SD card during programming
 
 String save_dirname = "/"; // where to save file uploaded file
 String sd_file_name_svf = "";
+String sd_file_name_bin = "";
+String sd_file_name_f32c_svf = "/ULX3S/f32c-45k-vector/f32c-ulx3s-45k-vector-sram.svf";
 int sd_program_activate = 0;
 int spiffs_program_activate = 0;
 int sd_detach = 1; // start with SPI bus detached (SD and OLED initially not in use)
-int sd_delete_file_activate = 0; // any filename, passed to sd_file_name_svf
+int sd_binary_file_activate = 0; // any filename, passed to sd_file_name_svf
 int sd_cs_counter = 0; // interrupt detects external SD access
 
 // directory read to malloced struct
@@ -489,8 +493,17 @@ void file_browser(uint8_t reset)
     }
     else // it's a file
     {
-      sd_file_name_svf = full_path;
-      sd_program_activate = 1;
+      if(full_path.lastIndexOf(".bin") > 0)
+      { // f32c binary
+        sd_file_name_svf = sd_file_name_f32c_svf;
+        sd_file_name_bin = full_path;
+        sd_binary_file_activate = 1;
+      }
+      else
+      { // probably SVF file
+        sd_file_name_svf = full_path;
+        sd_program_activate = 1;
+      }
     }
   }
   if(Ifb.hold[BTN_DOWN] == 1 || Ifb.hold[BTN_DOWN] > 40)
@@ -575,7 +588,7 @@ void program_file(fs::FS &storage, String filename, int detach)
   digitalWrite(LED_WIFI, HIGH);
   if(sd_detach == 0)
   {
-    tft.print("SVF");
+    // tft.print("SVF");
     tft.drawRect(pb_x,pb_y,pb_w,pb_h,pb_color_frame,pb_color_empty,true);
   }
   int pb_w_full = pb_w-2; // full progress bar width
@@ -594,10 +607,12 @@ void program_file(fs::FS &storage, String filename, int detach)
        if( (index & 0xFFF) == 0 || final != 0)
          if(pb_w_anim > 0 && pb_w_anim <= pb_w_full)
            tft.fillRect(pb_x+1,pb_y+1,pb_w_anim,pb_h-2,pb_color_full);
+       #if 0
        if( (index & 0xFFFF) == 0)
          tft.print(".");
        if(final)
          tft.println("ok");
+       #endif
      }
   }
   SVF_file.close();
@@ -769,7 +784,13 @@ void setup()
   pinMode(LED_WIFI, OUTPUT);
   digitalWrite(LED_WIFI, HIGH); // welcome blink
   pinMode(BTN0_PIN, INPUT_PULLUP); // holding GPIO0 LOW will signal ESP32 to load "passthru.svf" from SPIFFS to JTAG
-  delay(30); // 30ms delay, allow pullup to work
+  delay(30); // allow pullup line to stabilize
+  int btn0_pressed_at_powerup = 0;
+  if(digitalRead(BTN0_PIN) == LOW)
+    btn0_pressed_at_powerup = 1;
+  if(btn0_pressed_at_powerup == 0)
+  {
+  delay(1170); // 1.2s delay, allow FPGA to boot from config flash
   if(digitalRead(__CS_SD) == LOW)
     sd_cs_counter = 1; // SD card is accessed by FPGA
   else
@@ -782,9 +803,7 @@ void setup()
     if(digitalRead(__CS_SD) == LOW) // if interrupt didn't catch the transition
       sd_cs_counter++; // increment just to be sure    
   }
-  int btn0_pressed_at_powerup = 0;
-  if(digitalRead(BTN0_PIN) == LOW)
-    btn0_pressed_at_powerup = 1;
+  }
   digitalWrite(LED_WIFI, LOW); // turn off initial blink
   // global variable sd_cs_counter will contain number of sd cs activations
 
@@ -932,6 +951,26 @@ void setup()
     // currently web interface doesn't know did it actually succeed
     request->send(200, "text/plain", "requested");
   });
+
+  // http://192.168.4.1/bin?path=/path/to/sd_card/file.bin
+  server.on("/bin", HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+    int isuccess = 0;
+    if(request->hasParam("path"))
+    {
+      AsyncWebParameter* p = request->getParam("path");
+      if(p)
+        if(p->value())
+        {
+          sd_file_name_svf = sd_file_name_f32c_svf;
+          sd_file_name_bin = p->value();
+          sd_binary_file_activate = 1;
+        }
+    }
+    // currently web interface doesn't know did it actually succeed
+    request->send(200, "text/plain", "requested");
+  });
+
 
   // http://192.168.4.1/mkdir?path=/path/to/new_directory
   server.on("/mkdir", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -1254,10 +1293,19 @@ void loop()
       mount_read_directory();
     }
     else
-      if(sd_delete_file_activate > 0)
+      if(sd_binary_file_activate > 0)
       {
-        sd_delete_file_activate = 0;
-        sd_delete(sd_file_name_svf);
+        if(sd_mount() >= 0)
+        { // upload f32c bitstream
+          program_file(SD, sd_file_name_svf, 1);
+          sd_unmount();
+        }
+        if(sd_mount() >= 0)
+        { // upload and execute binary
+          f32c_exec_binary(SD, sd_file_name_bin, 0x80000000);
+          sd_unmount();
+        }
+        sd_binary_file_activate = 0;
       }
       else
         periodic();
