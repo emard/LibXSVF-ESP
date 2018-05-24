@@ -114,11 +114,36 @@
                 td3.appendChild(prog_btn);
                 tr.appendChild(td3);
               }
+              if (name.toLowerCase().endsWith(".bin"))
+              {
+                // add button for FPGA upload
+                var td3 = document.createElement("td");
+                // UTF8 chars symbolizing upload: \u2BB9
+                // floppy:U+14FBE or U+1F5AB or U+1F5AC
+                // arrow:\u2192
+                // BGA: \u25A3 or \u25A6 or U+1F532
+                var progText = document.createTextNode("\uD83D\uDCBE\u2192\u25A3"); // multiplication cross "x"
+                var prog_btn = document.createElement("button");
+                prog_btn.title = "F32C Binary"; // shows oh mouse hover
+                prog_btn.appendChild(progText);
+                prog_btn.onclick=function() { bin_button(full_path) };
+                prog_btn.id="binbtn"+idnum;
+                td3.appendChild(prog_btn);
+                tr.appendChild(td3);
+              }
               table.appendChild(tr);
       }
       
       function prog_button(full_path) {
         var query_url = "/svf?path="+full_path;
+	microAjax(query_url, function (res) { // lambda function
+	  if(res == "requested") {
+          }
+	});
+      }
+
+      function bin_button(full_path) {
+        var query_url = "/bin?path="+full_path;
 	microAjax(query_url, function (res) { // lambda function
 	  if(res == "requested") {
           }
