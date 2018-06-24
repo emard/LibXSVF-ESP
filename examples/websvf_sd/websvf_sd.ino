@@ -108,6 +108,7 @@ int spiffs_program_activate = 0;
 int sd_detach = 1; // start with SPI bus detached (SD and OLED initially not in use)
 int sd_binary_file_activate = 0; // any filename, passed to sd_file_name_svf
 int sd_cs_counter = 0; // interrupt detects external SD access
+int sd_mounted = 0; // track SD_mount() state
 
 // directory read to malloced struct
 String DirPath = "/"; // current directory path
@@ -136,6 +137,8 @@ int DirNameCmp(const void *a, const void *b)
 
 int sd_mount()
 {
+  if(sd_mounted)
+    return 0;
   // initialize the SD card
   if(!SD.begin(__CS_SD, SPI, 20000000, "/sd")){
         #if DEBUG
@@ -153,11 +156,15 @@ int sd_mount()
         tft.println("No SD card attached");
         return -2;
   }
+  sd_mounted = 1;
   return 0; // success
 }
 
 void sd_unmount()
 {
+  if(!sd_mounted)
+    return;
+  sd_mounted = 0;
   SD.end();
 }
 
@@ -1060,6 +1067,30 @@ void setup()
     }
     String message = isuccess ? "success" : "fail";
     request->send(200, "text/plain", message);
+  });
+
+  // Download File from SD card
+  // http://192.168.4.1/dl?path=/path/to/download.file
+  server.on("/dl", HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+    if(request->hasParam("path"))
+    {
+      AsyncWebParameter* p = request->getParam("path");
+      if(p)
+        if(p->value())
+        {
+          if(sd_mount() >= 0)
+          {
+            AsyncWebServerResponse *response = request->beginResponse(SD, p->value(), String(), true);
+            request->send(response);
+            // sd_unmount(); // can't immediately unmount - file will be sent later
+          }
+          else
+          {
+            request->send(200, "text/plain", "SD card mount failed");
+          }
+        }
+    }
   });
 
   server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.htm");
