@@ -144,7 +144,8 @@ int sd_mount()
         #if DEBUG
         Serial.println("Card Mount Failed");
         #endif
-        tft.println("Card Mount Failed");
+        // if OLED is not initialized ESP32 will crash
+        // tft.println("Card Mount Failed");
         return -1;
   }
   uint8_t cardType = SD.cardType();
@@ -153,7 +154,8 @@ int sd_mount()
         #if DEBUG
         Serial.println("No SD card attached");
         #endif
-        tft.println("No SD card attached");
+        // if OLED is not initialized ESP32 will crash
+        // tft.println("No SD card attached");
         return -2;
   }
   sd_mounted = 1;
@@ -829,9 +831,11 @@ void setup()
     // because both ESP32 and amiga are accessing SD card at the same time
     // some exclusion mechanism needs to be done.
     // if we skip this, compiled-in password will be used instead from SD
-    sd_mount();
-    read_config(SD);
-    sd_unmount();
+    if(sd_mount() >= 0)
+    {
+      read_config(SD);
+      sd_unmount();
+    }
   }
 
   // Start with open AP
