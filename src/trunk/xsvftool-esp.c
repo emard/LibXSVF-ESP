@@ -34,13 +34,15 @@
 // so we (re)define them here. Those constants are
 // different for ESP8266 and ESP32
 
-#if ESP9266
+#if ESP8266
 #define TCK 14 // NodeMCU D5
 #define TMS  5 // NodeMCU D1
 #define TDI 13 // NodeMCU D7
 #define TDO 12 // NodeMCU D6
 //#define INPUT 0
 //#define OUTPUT 1
+static volatile uint32_t *outport, *inport; // assume one port contains all out pins
+static uint32_t tckpinmask, tmspinmask, tdipinmask, tdopinmask;
 #endif
 
 #if ESP32
