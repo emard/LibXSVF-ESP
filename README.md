@@ -3,11 +3,12 @@
 Works as standalone SVF or XSVF JTAG programmer
 for FPGA devices. This one should be better than my 
 [wifi_jtag](https://github.com/emard/wifi_jtag). 
-ESP8266 reads file from onboard SPI flash chip at ESP8266
-(it can hold 3MB) to program the target JTAG device.
-I tested it on my Lattice XP2.
+ESP8266 was tested by reading file from onboard SPI flash
+chip at ESP8266 (it can hold 3MB) and program the target 
+JTAG device (Lattice XP2).
 ESP32 accepts SVF file upload from web browser.
-I tested it on Lattice ECP5.
+I tested it on Lattice ECP5. ESP8266 could probably
+do the same as ESP32 but it's untested.
 
 It is small fork of Clifford Wolf's [Lib(X)SVF](http://www.clifford.at/libxsvf/),
 with minimal adaptation to get it working with ESP8266.
