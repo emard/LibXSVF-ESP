@@ -141,9 +141,9 @@ to change pinout.
     [x] fix memory leaks, if WEB TCP connection is broken,
         it won't free() what it had malloc()'d
     [x] make upload page be the home page
-    [ ] SD card support
-    [ ] OLED and buttons support
-    [ ] websvf AP mode
+    [x] SD card support
+    [x] OLED and buttons support
+    [x] websvf AP mode
     [x] progress bar
     [x] after upload show status, success or error
     [ ] after upload show elapsed time
@@ -155,7 +155,7 @@ to change pinout.
         Use upload-running flag to prevent concurrent uploads.
     [ ] Timeout (cca 10 minutes) to clear upload-running flag
         as some help in case of broken connections
-    [ ] report error if out-of-order packet is received
+    [x] report error if out-of-order packet is received
     [ ] make it work from text client "lynx" currently it just opens
         empty page with some "HTTP/1.0 200 OK" response.
         Text client "elinks" works on "minimal.htm" page, though.
