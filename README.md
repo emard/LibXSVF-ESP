@@ -49,8 +49,13 @@ itself works but can't open any pages stored in SPIFFS.
 
     *** ESP8266 ***
     ESPAsyncTCP
+        https://github.com/me-no-dev/ESPAsyncTCP
     FSBrowserNG
+        https://github.com/gmag11/FSBrowserNG
+    ESPAsyncWebServer
+        https://github.com/me-no-dev/ESPAsyncWebServer
     NtpClient
+        https://github.com/gmag11/NtpClient
     Time
 
     *** OLED ***
