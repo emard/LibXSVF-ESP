@@ -101,8 +101,8 @@ File SVF_file; // SVF file opened on SD card during programming
 
 String save_dirname = "/"; // where to save file uploaded file
 String sd_file_name_svf = "";
-String sd_file_name_bin = "";
-String sd_file_name_f32c_svf = "/ULX3S/f32c-45k-vector/f32c-ulx3s-45k-vector-sram.svf";
+String sd_file_name_bin = "/ULX3S/f32c/autoexec/autoexec.bin";
+String sd_file_name_f32c_svf = "/ULX3S/f32c/autoexec/f32c.svf";
 int sd_program_activate = 0;
 int spiffs_program_activate = 0;
 int sd_detach = 1; // start with SPI bus detached (SD and OLED initially not in use)
@@ -224,6 +224,25 @@ void read_config(fs::FS &storage)
   }
 
   conf_file.close();
+}
+
+// SD should be already mounted prior to this
+void try_to_autoexec(fs::FS &storage)
+{
+  File bin_file = storage.open(sd_file_name_bin);
+  // does autoexec.bin file exist?
+  if(bin_file)
+  {
+    bin_file.close();
+    File svf_file = storage.open(sd_file_name_f32c_svf);
+    // does f32c.svf file exist?
+    if(svf_file)
+    {
+      svf_file.close();
+      sd_file_name_svf = sd_file_name_f32c_svf;
+      sd_binary_file_activate = 1;
+    }
+  }
 }
 
 // read current directory path, don't recurse child dirs
@@ -834,6 +853,7 @@ void setup()
     if(sd_mount() >= 0)
     {
       read_config(SD);
+      try_to_autoexec(SD);
       sd_unmount();
     }
   }
