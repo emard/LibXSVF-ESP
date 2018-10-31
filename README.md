@@ -123,7 +123,7 @@ It's currently "hidden" in xsvftool-esp8266.c
 You can edit this file and recompile sketch 
 to change pinout.
 
-    #if ESP9266
+    #if ESP8266
     #define TCK 14 // NodeMCU D5
     #define TMS  5 // NodeMCU D1
     #define TDI 13 // NodeMCU D7
