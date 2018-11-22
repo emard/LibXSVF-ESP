@@ -63,6 +63,18 @@ itself works but can't open any pages stored in SPIFFS.
     SSD1331
     https://github.com/emard/SSD_13XX
 
+I *think* it should be possible to use latest ESP32 arduino support from
+boards manager and other newer version of above liblraries.
+
+In ESP32 arduino support directory, edit file "SD.cpp"
+
+    ~/.arduino15/packages/esp32/hardware/esp32/1.0.0/libraries/SD/src/SD.cpp
+
+and set SD card SPI bus initialization to explicit pinout:
+
+    // spi.begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss)
+    spi.begin(14, 2, 15, 13);
+
 Start arduino, open examples->LibXSVF
 
 # Upload bitstream file to SPI flash
