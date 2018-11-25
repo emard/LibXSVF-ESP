@@ -231,6 +231,34 @@ void handle_rm(AsyncWebServerRequest *request)
     request->send(200, "text/plain", message);
 }
 
+void handle_rmdir(AsyncWebServerRequest *request)
+{
+    int isuccess = 0;
+    if(request->hasParam("path"))
+    {
+      AsyncWebParameter* p = request->getParam("path");
+      if(p)
+        if(p->value())
+        {
+          if(sd_mount()>=0)
+          {
+            if(SD.rmdir(p->value()))
+            {
+              isuccess = 1;
+            }
+            sd_unmount();
+          }
+        }
+    }
+    if(isuccess)
+    {
+      init_oled_show_ip();
+      mount_read_directory();
+    }
+    String message = isuccess ? "success" : "fail";
+    request->send(200, "text/plain", message);
+}
+
 
 void handle_dl(AsyncWebServerRequest *request)
 {
@@ -456,6 +484,9 @@ void web_server_init()
 
   // http://192.168.4.1/mkdir?path=/path/to/new_directory
   server.on("/mkdir", HTTP_GET, handle_mkdir);
+
+  // http://192.168.4.1/rm?path=/path/to/junk_directory
+  server.on("/rmdir", HTTP_GET, handle_rmdir);
 
   // http://192.168.4.1/rm?path=/path/to/junk.file
   server.on("/rm", HTTP_GET, handle_rm);
