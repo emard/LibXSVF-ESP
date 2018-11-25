@@ -64,7 +64,12 @@ itself works but can't open any pages stored in SPIFFS.
     https://github.com/emard/SSD_13XX
 
 I *think* it should be possible to use latest ESP32 arduino support from
-boards manager and other newer version of above liblraries.
+boards manager and other newer version of above liblraries. If AsyncTCP
+throws compiling errors, switch to "idf-update" branch:
+
+    cd ~/Arduino/libraries/AsyncTCP
+    git pull
+    git checkout idf-update
 
 In ESP32 arduino support directory, edit file "SD.cpp"
 
