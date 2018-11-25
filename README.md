@@ -73,7 +73,8 @@ In ESP32 arduino support directory, edit file "SD.cpp"
 and set SD card SPI bus initialization to explicit pinout:
 
     // spi.begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss)
-    spi.begin(14, 2, 15, 13);
+    spi.begin(14, 12, 13, -1); // v1.7
+    spi.begin(14, 2, 15, -1); // v1.8 and higher
 
 Start arduino, open examples->LibXSVF
 

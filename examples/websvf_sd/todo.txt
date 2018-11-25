@@ -1,0 +1,15 @@
+[ ] directory up one level
+[x] directory.htm file upload to directory
+[ ] after file upload, redraw directory
+[ ] directory.htm create directory (form input)
+[ ] directory.htm delete directory (rmdir, arduino)
+[ ] delete -> rm
+[ ] arduino cleanup getting get parameter (for search -> asyncweb api named)
+    see it done under "/dir"
+[ ] simplify delete code (probaby can be done from async thread instead
+    of scheduling main loop)
+[ ] when delete is in get list
+    fixit, after upload it's immediately deleted? 
+[ ] after deleting, remove delete get parameter from refreshed page?
+[ ] sd_mount() return 1 success, 0 fail for if(sd_mount())
+[x] no SD card: blue LED blinks as ESP32 reboots
