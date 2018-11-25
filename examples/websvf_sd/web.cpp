@@ -30,33 +30,6 @@ String CommandLine(String user)
 }
 
 
-void handle_dir(AsyncWebServerRequest *request)
-{
-    AsyncResponseStream *response = request->beginResponseStream("text/json");
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject &root = jsonBuffer.createObject();
-    if(request->hasParam("path"))
-    {
-      AsyncWebParameter* p = request->getParam("path");
-      if(p)
-        if(p->value())
-          DirPath=p->value();
-    }
-    init_oled_show_ip();
-    mount_read_directory();
-    root["path"]=DirPath;
-    int ndirs = 0;
-    JsonArray& data = root.createNestedArray("files");
-    for(int i = 0; i < DirN; i++)
-    {
-      if(DirEntries[i].type) ndirs++; // count how many are dirs before files
-      data.add(DirEntries[i].name);
-    }
-    root["ndirs"]=String(ndirs);
-    root.printTo(*response);
-    request->send(response);
-}
-
 void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
   digitalWrite(LED_WIFI, HIGH);
   if(type == WS_EVT_CONNECT){
@@ -134,32 +107,8 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
 }
 
 
-void web_server_init()
+void handle_dir(AsyncWebServerRequest *request)
 {
-  MDNS.addService("http","tcp",80);
-
-  ws.onEvent(onWsEvent);
-  server.addHandler(&ws);
-
-  events.onConnect([](AsyncEventSourceClient *client){
-    client->send("hello!",NULL,millis(),1000);
-  });
-  server.addHandler(&events);
-
-  #ifdef ESP8266
-  server.addHandler(new SPIFFSEditor(http_username,http_password));
-  #endif
-  #ifdef ESP32
-  server.addHandler(new SPIFFSEditor(SPIFFS,http_username,http_password));
-  #endif
-
-  server.on("/heap", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200, "text/plain", String(ESP.getFreeHeap()));
-  });
-
-  // http://192.168.4.1/dir?path=/path/to/directory
-  server.on("/dir", HTTP_GET, [](AsyncWebServerRequest *request)
-  {
     AsyncResponseStream *response = request->beginResponseStream("text/json");
     DynamicJsonBuffer jsonBuffer;
     JsonObject &root = jsonBuffer.createObject();
@@ -183,11 +132,11 @@ void web_server_init()
     root["ndirs"]=String(ndirs);
     root.printTo(*response);
     request->send(response);
-  });
+}
 
-  // http://192.168.4.1/svf?path=/path/to/sd_card/file.svf
-  server.on("/svf", HTTP_GET, [](AsyncWebServerRequest *request)
-  {
+
+void handle_svf(AsyncWebServerRequest *request)
+{
     int isuccess = 0;
     if(request->hasParam("path"))
     {
@@ -201,11 +150,11 @@ void web_server_init()
     }
     // currently web interface doesn't know did it actually succeed
     request->send(200, "text/plain", "requested");
-  });
+}
 
-  // http://192.168.4.1/bin?path=/path/to/sd_card/file.bin
-  server.on("/bin", HTTP_GET, [](AsyncWebServerRequest *request)
-  {
+
+void handle_bin(AsyncWebServerRequest *request)
+{
     int isuccess = 0;
     if(request->hasParam("path"))
     {
@@ -220,12 +169,11 @@ void web_server_init()
     }
     // currently web interface doesn't know did it actually succeed
     request->send(200, "text/plain", "requested");
-  });
+}
 
 
-  // http://192.168.4.1/mkdir?path=/path/to/new_directory
-  server.on("/mkdir", HTTP_GET, [](AsyncWebServerRequest *request)
-  {
+void handle_mkdir(AsyncWebServerRequest *request)
+{
     int isuccess = 0;
     if(request->hasParam("path"))
     {
@@ -251,42 +199,12 @@ void web_server_init()
     }
     String message = isuccess ? "success" : "fail";
     request->send(200, "text/plain", message);
-  });
 
-  // http://192.168.4.1/rmdir?path=/path/to/junk_directory
-  // directory should be empty to be removed
-  server.on("/rmdir", HTTP_GET, [](AsyncWebServerRequest *request)
-  {
-    int isuccess = 0;
-    if(request->hasParam("path"))
-    {
-      AsyncWebParameter* p = request->getParam("path");
-      if(p)
-        if(p->value())
-        {
-          if(sd_mount()>=0)
-          {
-            if(SD.rmdir(p->value()))
-            {
-              isuccess = 1;
-              // todo: switch to parent directory (path go up one level)
-            }
-            sd_unmount();
-          }
-        }
-    }
-    if(isuccess)
-    {
-      init_oled_show_ip();
-      mount_read_directory();
-    }
-    String message = isuccess ? "success" : "fail";
-    request->send(200, "text/plain", message);
-  });
+}
 
-  // http://192.168.4.1/rm?path=/path/to/junk.file
-  server.on("/rm", HTTP_GET, [](AsyncWebServerRequest *request)
-  {
+
+void handle_rm(AsyncWebServerRequest *request)
+{
     int isuccess = 0;
     if(request->hasParam("path"))
     {
@@ -311,12 +229,11 @@ void web_server_init()
     }
     String message = isuccess ? "success" : "fail";
     request->send(200, "text/plain", message);
-  });
+}
 
-  // Download File from SD card
-  // http://192.168.4.1/dl?path=/path/to/download.file
-  server.on("/dl", HTTP_GET, [](AsyncWebServerRequest *request)
-  {
+
+void handle_dl(AsyncWebServerRequest *request)
+{
     if(request->hasParam("path"))
     {
       AsyncWebParameter* p = request->getParam("path");
@@ -335,11 +252,11 @@ void web_server_init()
           }
         }
     }
-  });
+}
 
-  server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.htm");
 
-  server.onNotFound([](AsyncWebServerRequest *request){
+void handle_not_found(AsyncWebServerRequest *request)
+{
     Serial.printf("NOT_FOUND: ");
     if(request->method() == HTTP_GET)
       Serial.printf("GET");
@@ -383,9 +300,10 @@ void web_server_init()
       }
     }
     request->send(404);
-  });
+}
 
-  server.onFileUpload([](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final){
+void handle_file_upload(AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final)
+{
     static int packet_counter = 0;
     static int out_of_order = 0;
     static int write_error = 0;
@@ -501,7 +419,57 @@ void web_server_init()
       Serial.printf("UploadEnd: %s (%u)\n", filename.c_str(), index+len);
       digitalWrite(LED_WIFI, LOW);
     }
+}
+
+
+void web_server_init()
+{
+  MDNS.addService("http","tcp",80);
+
+  ws.onEvent(onWsEvent);
+  server.addHandler(&ws);
+
+  events.onConnect([](AsyncEventSourceClient *client){
+    client->send("hello!",NULL,millis(),1000);
   });
+  server.addHandler(&events);
+
+  #ifdef ESP8266
+  server.addHandler(new SPIFFSEditor(http_username,http_password));
+  #endif
+  #ifdef ESP32
+  server.addHandler(new SPIFFSEditor(SPIFFS,http_username,http_password));
+  #endif
+
+  server.on("/heap", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(200, "text/plain", String(ESP.getFreeHeap()));
+  });
+
+  // http://192.168.4.1/dir?path=/path/to/directory
+  server.on("/dir", HTTP_GET, handle_dir);
+
+  // http://192.168.4.1/svf?path=/path/to/sd_card/file.svf
+  server.on("/svf", HTTP_GET, handle_svf);
+
+  // http://192.168.4.1/bin?path=/path/to/sd_card/file.bin
+  server.on("/bin", HTTP_GET, handle_bin);
+
+  // http://192.168.4.1/mkdir?path=/path/to/new_directory
+  server.on("/mkdir", HTTP_GET, handle_mkdir);
+
+  // http://192.168.4.1/rm?path=/path/to/junk.file
+  server.on("/rm", HTTP_GET, handle_rm);
+
+  // Download File from SD card
+  // http://192.168.4.1/dl?path=/path/to/download.file
+  server.on("/dl", HTTP_GET, handle_dl);
+
+  server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.htm");
+
+  server.onNotFound(handle_not_found);
+
+  server.onFileUpload(handle_file_upload);
+
   server.onRequestBody([](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total){
     if(!index)
       Serial.printf("BodyStart: %u\n", total);
@@ -511,5 +479,4 @@ void web_server_init()
   });
 
   server.begin();
-
 }
