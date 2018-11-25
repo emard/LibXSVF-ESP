@@ -3,5 +3,5 @@
 // Same ssid/password apply for client and AP.
 
 char host_name[32] = "websvf"; // request local name when connected as client, same as ssid
-char ssid[32] = "ra";
-char password[32] = "GigabyteBrix"; // >=8 chars or "" for open access
+char ssid[32] = "websvf";
+char password[32] = "12345678"; // >=8 chars or "" for open access
