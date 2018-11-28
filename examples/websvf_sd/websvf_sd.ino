@@ -110,7 +110,6 @@ void setup()
   digitalWrite(LED_WIFI, LOW); // turn off initial blink
   // global variable sd_cs_counter will contain number of sd cs activations
   Serial.printf("\nsd_cs_counter=%d btn0_pressed=%d\n", sd_cs_counter, btn0_pressed_at_powerup);
-  int spi_allowed = 0;
   if(sd_cs_counter == 0 && btn0_pressed_at_powerup == 0)
   // if sd card access is detected at powerup we cannot read SD card
   // with passowords -> we can only use compiled password
@@ -121,10 +120,10 @@ void setup()
     // warning - detection of SD accesss is not 100% reliable.
     // Hold BTN0 to be sure to avoid SD access.
     // mounting SD card at this time can interfere with FPGA access.
-    // if amiga core is loaded to FPGA config flash
-    // and powered up, amiga won't boot from SD
-    // because both ESP32 and amiga are accessing SD card at the same time
-    // some exclusion mechanism needs to be done.
+    // if a core that uses SD is loaded to FPGA config flash
+    // and powered up, in some cases the core may not boot from SD
+    // when both ESP32 and FPGA are accessing SD card at the same time.
+    // Some exclusion mechanism needs to be done.
     // if we skip this, compiled-in password will be used instead from SD
     if(sd_mount() >= 0)
     {
@@ -132,7 +131,6 @@ void setup()
       read_config(SD);
       try_to_autoexec(SD);
       sd_unmount();
-      spi_allowed = 1;
     }
   }
 
@@ -156,7 +154,7 @@ void setup()
   }
   else // 2nd blink indicates connection to remote AP
     digitalWrite(LED_WIFI, HIGH); // conected blink
-  if(spi_allowed)
+  if(sd_cs_counter == 0 && btn0_pressed_at_powerup == 0)
     init_oled_show_ip();
   Serial.print("host:");
   Serial.println(host_name);
