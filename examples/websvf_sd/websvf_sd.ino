@@ -12,6 +12,8 @@
 // SD chipselect is pin 26
 #include <SD.h>
 
+int sd_cs_counter = 0; // interrupt detects external SD access
+
 // Edit SSD_13XX.cpp line 266
 // SPI.begin() -> SPI.begin(14, 12, 13, -1); // v1.7
 // SPI.begin() -> SPI.begin(14, 2, 15, -1); // v1.8 CS=13
@@ -70,34 +72,44 @@ void IRAM_ATTR sd_cs_interrupt()
 void setup()
 {
   pinMode(__CS_SD, INPUT_PULLUP); // interrupt will monitor SD chip select
+  pinMode(__MOSI_TFT, INPUT_PULLUP); // pullup SPI shared with SD
+  pinMode(__MISO_TFT, INPUT_PULLUP); // pullup SPI shared with SD
+  pinMode(__SCL_TFT, INPUT_PULLUP); // pullup SPI shared with SD
+  pinMode(__DC_TFT, INPUT_PULLUP); // pullup SPI
+  pinMode(__CS_TFT, INPUT_PULLUP); // pullup SPI
+  pinMode(__RES_TFT, INPUT_PULLUP); // pullup SPI
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   pinMode(LED_WIFI, OUTPUT);
   digitalWrite(LED_WIFI, HIGH); // welcome blink
   pinMode(BTN0_PIN, INPUT_PULLUP); // holding GPIO0 LOW will signal ESP32 to load "passthru.svf" from SPIFFS to JTAG
-  delay(30); // allow pullup line to stabilize
+  delay(30); // allow pullup line to stabilize 30 ms is sufficient
   int btn0_pressed_at_powerup = 0;
   if(digitalRead(BTN0_PIN) == LOW)
     btn0_pressed_at_powerup = 1;
   if(btn0_pressed_at_powerup == 0)
   {
-  delay(1170); // 1.2s delay, allow FPGA to boot from config flash
-  if(digitalRead(__CS_SD) == LOW)
+  // delay(1170); // 1.2s delay, allow FPGA to boot from config flash
+  #if 1
+  if(digitalRead(__MOSI_TFT) == LOW)
     sd_cs_counter = 1; // SD card is accessed by FPGA
   else
+  #endif
   { // wait some extra time and monitor is FPGA accessing SD
     sd_cs_counter = 0; // reset counter, sd_cs_interrupt() will increment this
-    attachInterrupt(digitalPinToInterrupt(BTN0_PIN), sd_cs_interrupt, FALLING);
-    for(int i = 0; i < 5 && sd_cs_counter == 0; i++)
+    attachInterrupt(digitalPinToInterrupt(__MOSI_TFT), sd_cs_interrupt, FALLING);
+    for(int i = 0; i < 10 && sd_cs_counter == 0; i++)
       delay(100); // during this delay (total 0.5 s) SD pin will be monitored
-    detachInterrupt(digitalPinToInterrupt(BTN0_PIN));
-    if(digitalRead(__CS_SD) == LOW) // if interrupt didn't catch the transition
+    detachInterrupt(digitalPinToInterrupt(__MOSI_TFT));
+    #if 1
+    if(digitalRead(__MOSI_TFT) == LOW) // if interrupt didn't catch the transition
       sd_cs_counter++; // increment just to be sure    
+    #endif
   }
   }
   digitalWrite(LED_WIFI, LOW); // turn off initial blink
   // global variable sd_cs_counter will contain number of sd cs activations
-
+  Serial.printf("\nsd_cs_counter=%d btn0_pressed=%d\n", sd_cs_counter, btn0_pressed_at_powerup);
   if(sd_cs_counter == 0 && btn0_pressed_at_powerup == 0)
   // if sd card access is detected at powerup we cannot read SD card
   // with passowords -> we can only use compiled password
@@ -115,6 +127,7 @@ void setup()
     // if we skip this, compiled-in password will be used instead from SD
     if(sd_mount() >= 0)
     {
+      Serial.println("reading sd config");
       read_config(SD);
       try_to_autoexec(SD);
       sd_unmount();

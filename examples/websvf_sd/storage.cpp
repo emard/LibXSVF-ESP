@@ -12,7 +12,6 @@ String sd_file_name_f32c_svf = "/ULX3S/f32c/autoexec/f32c.svf";
 int sd_program_activate = 0;
 int sd_detach = 1; // start with SPI bus detached (SD and OLED initially not in use)
 int sd_binary_file_activate = 0; // any filename, passed to sd_file_name_svf
-int sd_cs_counter = 0; // interrupt detects external SD access
 int sd_mounted = 0; // track SD_mount() state
 
 // directory read to malloced struct
