@@ -105,6 +105,20 @@ void read_config(fs::FS &storage)
        if(a)
          strncpy(http_password, a, 31);
        #endif
+       #if 0 // unused, example
+       /* support example for unused format
+  "client":
+  [
+    { "ssid": "ssid1", "password": "passwd1"  },
+    { "ssid": "ssid2", "password": "passwd2" }
+  ],
+        */
+       int l = jroot["client"].size();
+       Serial.printf("client array length %d\n", l);
+       a = jroot["client"][0]["password"];
+       if(a)
+         Serial.println(a);
+       #endif // unused, example
        #if 0
        Serial.println(ssid);
        Serial.println(password);
@@ -401,31 +415,4 @@ void file_browser(uint8_t reset)
       }
     }
   }
-}
-
-
-int sd_delete(String filename)
-{
-  int deleted = 0;
-  // sd_detach = 0;
-  if(sd_mount() >= 0)
-  {
-    if(SD.remove(filename))
-    {
-      read_directory(SD);
-      sd_unmount();
-      Ifb.cursor = 0;
-      Ifb.topitem = 0;
-      init_oled_show_ip();
-      // OLED must be initialized before show_directory
-      show_directory(Ifb.cursor, Ifb.topitem);
-      deleted = 1;
-    }
-    else
-    {
-      sd_unmount();
-      deleted = 0;
-    }
-  }
-  return deleted;
 }
