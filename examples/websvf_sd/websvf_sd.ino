@@ -99,7 +99,7 @@ void setup()
     sd_cs_counter = 0; // reset counter, sd_cs_interrupt() will increment this
     attachInterrupt(digitalPinToInterrupt(__MOSI_TFT), sd_cs_interrupt, FALLING);
     for(int i = 0; i < 10 && sd_cs_counter == 0; i++)
-      delay(100); // during this delay (total 0.5 s) SD pin will be monitored
+      delay(100); // during this delay (total 1 s) SD pin will be monitored
     detachInterrupt(digitalPinToInterrupt(__MOSI_TFT));
     #if 1
     if(digitalRead(__MOSI_TFT) == LOW) // if interrupt didn't catch the transition
@@ -110,6 +110,7 @@ void setup()
   digitalWrite(LED_WIFI, LOW); // turn off initial blink
   // global variable sd_cs_counter will contain number of sd cs activations
   Serial.printf("\nsd_cs_counter=%d btn0_pressed=%d\n", sd_cs_counter, btn0_pressed_at_powerup);
+  int spi_allowed = 0;
   if(sd_cs_counter == 0 && btn0_pressed_at_powerup == 0)
   // if sd card access is detected at powerup we cannot read SD card
   // with passowords -> we can only use compiled password
@@ -131,6 +132,7 @@ void setup()
       read_config(SD);
       try_to_autoexec(SD);
       sd_unmount();
+      spi_allowed = 1;
     }
   }
 
@@ -154,16 +156,18 @@ void setup()
   }
   else // 2nd blink indicates connection to remote AP
     digitalWrite(LED_WIFI, HIGH); // conected blink
+  if(spi_allowed)
+    init_oled_show_ip();
   Serial.print("host:");
   Serial.println(host_name);
-  Serial.print("wifi ssid:");
-  Serial.println(ssid);
-  Serial.print("wifi pass:");
-  Serial.println(password);
   Serial.print("web user:");
   Serial.println(http_username);
   Serial.print("web pass:");
   Serial.println(http_password);
+  Serial.print("wifi ssid:");
+  Serial.println(ssid);
+  Serial.print("wifi pass:");
+  Serial.println(password);
 
   // Serial.println("done!");
   // file_browser(1); // reset
